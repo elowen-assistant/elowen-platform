@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package elowen.devices.v1;
+
+import "google/protobuf/timestamp.proto";
+
+message DeviceRegistration {
+  string device_id = 1;
+  string name = 2;
+  bool primary_flag = 3;
+  repeated string allowed_repos = 4;
+  repeated string capabilities = 5;
+  google.protobuf.Timestamp registered_at = 6;
+}
+
+message AvailabilityProbe {
+  string probe_id = 1;
+  string job_id = 2;
+  string device_id = 3;
+  google.protobuf.Timestamp sent_at = 4;
+}
+
+message AvailabilityResponse {
+  string probe_id = 1;
+  string job_id = 2;
+  string device_id = 3;
+  bool available = 4;
+  string reason = 5;
+  google.protobuf.Timestamp responded_at = 6;
+}

@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package elowen.events.v1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+message JobEvent {
+  string event_id = 1;
+  string job_id = 2;
+  string event_type = 3;
+  google.protobuf.Struct payload = 4;
+  google.protobuf.Timestamp created_at = 5;
+}

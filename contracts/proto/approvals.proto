@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package elowen.approvals.v1;
+
+import "google/protobuf/timestamp.proto";
+
+enum ApprovalActionType {
+  APPROVAL_ACTION_TYPE_UNSPECIFIED = 0;
+  APPROVAL_ACTION_TYPE_PUSH = 1;
+  APPROVAL_ACTION_TYPE_NOTE_PROMOTION = 2;
+}
+
+enum ApprovalStatus {
+  APPROVAL_STATUS_UNSPECIFIED = 0;
+  APPROVAL_STATUS_PENDING = 1;
+  APPROVAL_STATUS_APPROVED = 2;
+  APPROVAL_STATUS_REJECTED = 3;
+  APPROVAL_STATUS_EXPIRED = 4;
+}
+
+message ApprovalRequest {
+  string approval_id = 1;
+  string thread_id = 2;
+  string job_id = 3;
+  ApprovalActionType action_type = 4;
+  string summary = 5;
+  google.protobuf.Timestamp created_at = 6;
+}
+
+message ApprovalResolution {
+  string approval_id = 1;
+  string job_id = 2;
+  ApprovalStatus status = 3;
+  string resolved_by = 4;
+  string reason = 5;
+  google.protobuf.Timestamp resolved_at = 6;
+}

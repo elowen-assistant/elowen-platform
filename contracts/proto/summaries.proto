@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package elowen.summaries.v1;
+
+import "google/protobuf/timestamp.proto";
+
+enum SummaryScope {
+  SUMMARY_SCOPE_UNSPECIFIED = 0;
+  SUMMARY_SCOPE_THREAD = 1;
+  SUMMARY_SCOPE_JOB = 2;
+}
+
+message SummaryRecord {
+  string summary_id = 1;
+  SummaryScope scope = 2;
+  string source_id = 3;
+  uint32 version = 4;
+  string content = 5;
+  google.protobuf.Timestamp created_at = 6;
+}

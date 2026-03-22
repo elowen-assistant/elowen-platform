@@ -1,0 +1,107 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: elowen-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: elowen
+      POSTGRES_USER: elowen
+      POSTGRES_PASSWORD: elowen
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ../db/postgres/schema.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U elowen -d elowen"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  nats:
+    image: nats:2.11-alpine
+    container_name: elowen-nats
+    restart: unless-stopped
+    command: ["-js", "-sd", "/data"]
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    volumes:
+      - nats-data:/data
+
+  arangodb:
+    image: arangodb:3.12
+    container_name: elowen-arangodb
+    restart: unless-stopped
+    environment:
+      ARANGO_ROOT_PASSWORD: elowen
+    ports:
+      - "8529:8529"
+    volumes:
+      - arangodb-data:/var/lib/arangodb3
+      - arangodb-apps:/var/lib/arangodb3-apps
+
+  elowen-api:
+    build:
+      context: ../../elowen-api
+    container_name: elowen-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_started
+    environment:
+      ELOWEN_DATABASE_URL: postgres://elowen:elowen@postgres:5432/elowen
+      ELOWEN_NATS_URL: nats://nats:4222
+      PORT: 8080
+    ports:
+      - "8080:8080"
+
+  elowen-ui:
+    build:
+      context: ../../elowen-ui
+    container_name: elowen-ui
+    restart: unless-stopped
+    depends_on:
+      elowen-api:
+        condition: service_started
+    ports:
+      - "3000:3000"
+
+  elowen-edge:
+    build:
+      context: ../../elowen-edge
+    container_name: elowen-edge
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_started
+    environment:
+      ELOWEN_DATABASE_URL: postgres://elowen:elowen@postgres:5432/elowen
+      ELOWEN_NATS_URL: nats://nats:4222
+
+  elowen-notes:
+    build:
+      context: ../../elowen-notes
+    container_name: elowen-notes
+    restart: unless-stopped
+    depends_on:
+      arangodb:
+        condition: service_started
+    environment:
+      ELOWEN_ARANGODB_URL: http://arangodb:8529
+      ELOWEN_ARANGODB_DATABASE: elowen_notes
+      ELOWEN_ARANGODB_USERNAME: root
+      ELOWEN_ARANGODB_PASSWORD: elowen
+      PORT: 8080
+    ports:
+      - "8081:8080"
+
+volumes:
+  postgres-data:
+  nats-data:
+  arangodb-data:
+  arangodb-apps:
