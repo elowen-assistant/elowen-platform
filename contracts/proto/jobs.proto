@@ -51,6 +51,27 @@ message Job {
   google.protobuf.Timestamp updated_at = 14;
 }
 
+message JobEventRecord {
+  string id = 1;
+  string job_id = 2;
+  string event_type = 3;
+  string payload_json = 4;
+  google.protobuf.Timestamp created_at = 5;
+}
+
+message JobDetail {
+  Job job = 1;
+  repeated JobEventRecord events = 2;
+}
+
+message CreateJobRequest {
+  string title = 1;
+  string repo_name = 2;
+  string base_branch = 3;
+  string request_text = 4;
+  string device_id = 5;
+}
+
 message JobDispatch {
   string job_id = 1;
   string thread_id = 2;
