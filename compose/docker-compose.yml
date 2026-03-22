@@ -80,8 +80,14 @@ services:
       nats:
         condition: service_started
     environment:
+      ELOWEN_API_URL: http://elowen-api:8080
       ELOWEN_DATABASE_URL: postgres://elowen:elowen@postgres:5432/elowen
       ELOWEN_NATS_URL: nats://nats:4222
+      ELOWEN_DEVICE_ID: elowen-primary
+      ELOWEN_DEVICE_NAME: Elowen Primary Workspace
+      ELOWEN_DEVICE_PRIMARY: "true"
+      ELOWEN_ALLOWED_REPOS: elowen-api,elowen-ui,elowen-edge,elowen-notes,elowen-platform
+      ELOWEN_DEVICE_CAPABILITIES: codex,git,build,test
 
   elowen-notes:
     build:

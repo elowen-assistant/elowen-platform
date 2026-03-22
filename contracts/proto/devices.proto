@@ -4,6 +4,17 @@ package elowen.devices.v1;
 
 import "google/protobuf/timestamp.proto";
 
+message Device {
+  string device_id = 1;
+  string name = 2;
+  bool primary_flag = 3;
+  repeated string allowed_repos = 4;
+  repeated string capabilities = 5;
+  google.protobuf.Timestamp registered_at = 6;
+  google.protobuf.Timestamp last_seen_at = 7;
+  AvailabilityResponse last_probe = 8;
+}
+
 message DeviceRegistration {
   string device_id = 1;
   string name = 2;
@@ -11,6 +22,10 @@ message DeviceRegistration {
   repeated string allowed_repos = 4;
   repeated string capabilities = 5;
   google.protobuf.Timestamp registered_at = 6;
+}
+
+message ProbeDeviceRequest {
+  string job_id = 1;
 }
 
 message AvailabilityProbe {
