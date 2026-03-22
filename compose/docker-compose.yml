@@ -88,6 +88,11 @@ services:
       ELOWEN_DEVICE_PRIMARY: "true"
       ELOWEN_ALLOWED_REPOS: elowen-api,elowen-ui,elowen-edge,elowen-notes,elowen-platform
       ELOWEN_DEVICE_CAPABILITIES: codex,git,build,test
+      ELOWEN_EDGE_WORKSPACE_ROOT: /workspace
+      ELOWEN_EDGE_WORKTREE_ROOT: /workspace/.elowen/worktrees
+      ELOWEN_SIMULATED_RUN_MS: 1500
+    volumes:
+      - ../../:/workspace
 
   elowen-notes:
     build:

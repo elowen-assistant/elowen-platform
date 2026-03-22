@@ -72,6 +72,19 @@ message CreateJobRequest {
   string device_id = 5;
 }
 
+message JobLifecycleEvent {
+  string job_id = 1;
+  string device_id = 2;
+  string event_type = 3;
+  JobStatus status = 4;
+  JobResult result = 5;
+  FailureClass failure_class = 6;
+  string worktree_path = 7;
+  string detail = 8;
+  string payload_json = 9;
+  google.protobuf.Timestamp created_at = 10;
+}
+
 message JobDispatch {
   string job_id = 1;
   string thread_id = 2;
@@ -93,6 +106,12 @@ message JobStarted {
   string job_id = 1;
   string worktree_path = 2;
   google.protobuf.Timestamp started_at = 3;
+}
+
+message JobWorktreeCreated {
+  string job_id = 1;
+  string worktree_path = 2;
+  google.protobuf.Timestamp created_at = 3;
 }
 
 message JobCompleted {
