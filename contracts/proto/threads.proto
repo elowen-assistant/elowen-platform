@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package elowen.threads.v1;
+
+import "google/protobuf/timestamp.proto";
+
+message Thread {
+  string id = 1;
+  string title = 2;
+  string status = 3;
+  string current_summary_id = 4;
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp updated_at = 6;
+}
+
+message Message {
+  string id = 1;
+  string thread_id = 2;
+  string role = 3;
+  string content = 4;
+  string status = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+message ThreadDetail {
+  Thread thread = 1;
+  repeated Message messages = 2;
+}
+
+message CreateThreadRequest {
+  string title = 1;
+}
+
+message CreateMessageRequest {
+  string role = 1;
+  string content = 2;
+}
