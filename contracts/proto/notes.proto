@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+package elowen.notes.v1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+message NoteRecord {
+  string note_id = 1;
+  string title = 2;
+  string slug = 3;
+  string summary = 4;
+  repeated string tags = 5;
+  repeated string aliases = 6;
+  string note_type = 7;
+  string source_kind = 8;
+  string source_id = 9;
+  string current_revision_id = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+message NoteRevision {
+  string revision_id = 1;
+  string note_id = 2;
+  int32 version = 3;
+  string summary = 4;
+  string body_markdown = 5;
+  google.protobuf.Struct frontmatter = 6;
+  google.protobuf.Timestamp created_at = 7;
+}
+
+message NoteDetail {
+  NoteRecord note = 1;
+  NoteRevision revision = 2;
+}
+
+message SearchNotesRequest {
+  string q = 1;
+  int32 limit = 2;
+  string source_kind = 3;
+  string source_id = 4;
+}
+
+message PromoteNoteRequest {
+  string source_kind = 1;
+  string source_id = 2;
+  string title = 3;
+  string slug = 4;
+  string summary = 5;
+  string body_markdown = 6;
+  repeated string tags = 7;
+  repeated string aliases = 8;
+  string note_type = 9;
+  google.protobuf.Struct frontmatter = 10;
+}

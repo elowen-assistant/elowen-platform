@@ -3,6 +3,7 @@ syntax = "proto3";
 package elowen.threads.v1;
 
 import "google/protobuf/timestamp.proto";
+import "notes.proto";
 
 message Thread {
   string id = 1;
@@ -26,6 +27,7 @@ message Message {
 message ThreadDetail {
   Thread thread = 1;
   repeated Message messages = 2;
+  repeated elowen.notes.v1.NoteRecord related_notes = 3;
 }
 
 message CreateThreadRequest {

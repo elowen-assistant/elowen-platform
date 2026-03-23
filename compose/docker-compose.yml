@@ -54,6 +54,7 @@ services:
     environment:
       ELOWEN_DATABASE_URL: postgres://elowen:elowen@postgres:5432/elowen
       ELOWEN_NATS_URL: nats://nats:4222
+      ELOWEN_NOTES_URL: http://elowen-notes:8080
       PORT: 8080
     ports:
       - "8080:8080"

@@ -4,6 +4,7 @@ package elowen.jobs.v1;
 
 import "approvals.proto";
 import "google/protobuf/timestamp.proto";
+import "notes.proto";
 import "summaries.proto";
 
 enum JobStatus {
@@ -67,6 +68,7 @@ message JobDetail {
   string execution_report_json = 3;
   elowen.summaries.v1.SummaryRecord summary = 4;
   repeated elowen.approvals.v1.ApprovalRecord approvals = 5;
+  repeated elowen.notes.v1.NoteRecord related_notes = 6;
 }
 
 message CreateJobRequest {
