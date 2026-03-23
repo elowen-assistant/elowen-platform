@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: elowen-config
+data:
+  ELOWEN_DATABASE_URL: postgres://elowen:elowen@postgres:5432/elowen
+  ELOWEN_NATS_URL: nats://nats:4222
+  ELOWEN_API_URL: http://elowen-api:8080
+  ELOWEN_NOTES_URL: http://elowen-notes:8080
+  ELOWEN_ARANGODB_URL: http://arangodb:8529
+  ELOWEN_ARANGODB_DATABASE: elowen_notes
+  ELOWEN_ARANGODB_USERNAME: root
+  ELOWEN_DEVICE_ID: elowen-primary
+  ELOWEN_DEVICE_NAME: Elowen Primary Workspace
+  ELOWEN_DEVICE_PRIMARY: "true"
+  ELOWEN_ALLOWED_REPOS: elowen-api,elowen-ui,elowen-edge,elowen-notes,elowen-platform
+  ELOWEN_DEVICE_CAPABILITIES: codex,git,build,test
+  ELOWEN_EDGE_WORKSPACE_ROOT: /workspace
+  ELOWEN_EDGE_WORKTREE_ROOT: /workspace/.elowen/worktrees
+  ELOWEN_SIMULATED_RUN_MS: "1500"
+  ELOWEN_LOG_FORMAT: json

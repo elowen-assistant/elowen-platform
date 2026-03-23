@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: elowen-edge
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: elowen-edge
+  template:
+    metadata:
+      labels:
+        app: elowen-edge
+    spec:
+      containers:
+        - name: elowen-edge
+          image: ghcr.io/elowen-assistant/elowen-edge:latest
+          envFrom:
+            - configMapRef:
+                name: elowen-config
+          volumeMounts:
+            - name: workspace
+              mountPath: /workspace
+      volumes:
+        - name: workspace
+          emptyDir: {}

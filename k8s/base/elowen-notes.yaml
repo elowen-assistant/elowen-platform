@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: elowen-notes
+spec:
+  selector:
+    app: elowen-notes
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: elowen-notes
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: elowen-notes
+  template:
+    metadata:
+      labels:
+        app: elowen-notes
+    spec:
+      containers:
+        - name: elowen-notes
+          image: ghcr.io/elowen-assistant/elowen-notes:latest
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: elowen-config
+          env:
+            - name: ELOWEN_ARANGODB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: elowen-secrets
+                  key: ELOWEN_ARANGODB_PASSWORD
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10

@@ -1,3 +1,3 @@
 # Kubernetes
 
-Place Kubernetes manifests and Helm or Kustomize assets here once the Docker Compose deployment graduates beyond local-first operation.
+This folder now contains a `base/` Kustomize entry point that mirrors the current Compose topology and gives the stack an explicit migration path beyond local-first deployment.

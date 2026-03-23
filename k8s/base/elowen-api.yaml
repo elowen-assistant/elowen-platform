@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: elowen-api
+spec:
+  selector:
+    app: elowen-api
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: elowen-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: elowen-api
+  template:
+    metadata:
+      labels:
+        app: elowen-api
+    spec:
+      containers:
+        - name: elowen-api
+          image: ghcr.io/elowen-assistant/elowen-api:latest
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: elowen-config
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10

@@ -40,26 +40,28 @@ enum FailureClass {
 message Job {
   string id = 1;
   string short_id = 2;
-  string thread_id = 3;
-  string title = 4;
-  JobStatus status = 5;
-  JobResult result = 6;
-  FailureClass failure_class = 7;
-  string repo_name = 8;
-  string device_id = 9;
-  string branch_name = 10;
-  string base_branch = 11;
-  string parent_job_id = 12;
-  google.protobuf.Timestamp created_at = 13;
-  google.protobuf.Timestamp updated_at = 14;
+  string correlation_id = 3;
+  string thread_id = 4;
+  string title = 5;
+  JobStatus status = 6;
+  JobResult result = 7;
+  FailureClass failure_class = 8;
+  string repo_name = 9;
+  string device_id = 10;
+  string branch_name = 11;
+  string base_branch = 12;
+  string parent_job_id = 13;
+  google.protobuf.Timestamp created_at = 14;
+  google.protobuf.Timestamp updated_at = 15;
 }
 
 message JobEventRecord {
   string id = 1;
   string job_id = 2;
-  string event_type = 3;
-  string payload_json = 4;
-  google.protobuf.Timestamp created_at = 5;
+  string correlation_id = 3;
+  string event_type = 4;
+  string payload_json = 5;
+  google.protobuf.Timestamp created_at = 6;
 }
 
 message JobDetail {
@@ -81,26 +83,28 @@ message CreateJobRequest {
 
 message JobLifecycleEvent {
   string job_id = 1;
-  string device_id = 2;
-  string event_type = 3;
-  JobStatus status = 4;
-  JobResult result = 5;
-  FailureClass failure_class = 6;
-  string worktree_path = 7;
-  string detail = 8;
-  string payload_json = 9;
-  google.protobuf.Timestamp created_at = 10;
+  string correlation_id = 2;
+  string device_id = 3;
+  string event_type = 4;
+  JobStatus status = 5;
+  JobResult result = 6;
+  FailureClass failure_class = 7;
+  string worktree_path = 8;
+  string detail = 9;
+  string payload_json = 10;
+  google.protobuf.Timestamp created_at = 11;
 }
 
 message JobDispatch {
   string job_id = 1;
-  string thread_id = 2;
-  string device_id = 3;
-  string repo_name = 4;
-  string base_branch = 5;
-  string branch_name = 6;
-  string request_text = 7;
-  repeated string context_summary_ids = 8;
+  string correlation_id = 2;
+  string thread_id = 3;
+  string device_id = 4;
+  string repo_name = 5;
+  string base_branch = 6;
+  string branch_name = 7;
+  string request_text = 8;
+  repeated string context_summary_ids = 9;
 }
 
 message JobAccepted {
