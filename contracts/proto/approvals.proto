@@ -27,6 +27,26 @@ message ApprovalRequest {
   google.protobuf.Timestamp created_at = 6;
 }
 
+message ApprovalRecord {
+  string approval_id = 1;
+  string thread_id = 2;
+  string job_id = 3;
+  ApprovalActionType action_type = 4;
+  ApprovalStatus status = 5;
+  string summary = 6;
+  string resolved_by = 7;
+  string resolution_reason = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp resolved_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+message ApprovalResolutionRequest {
+  ApprovalStatus status = 1;
+  string resolved_by = 2;
+  string reason = 3;
+}
+
 message ApprovalResolution {
   string approval_id = 1;
   string job_id = 2;
