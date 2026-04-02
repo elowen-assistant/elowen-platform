@@ -15,7 +15,6 @@ This document covers:
 This document does not cover:
 
 - exposing NATS publicly
-- real Codex runner setup
 - chat-to-job automation
 - in-thread completion replies
 
@@ -55,6 +54,18 @@ Expected baseline values:
 - `ELOWEN_NATS_URL=nats://127.0.0.1:4222`
 - `ELOWEN_EDGE_WORKSPACE_ROOT=<local workspace path>`
 - `ELOWEN_EDGE_WORKTREE_ROOT=<local workspace path>\.elowen\worktrees`
+
+To enable the real Codex runner, also set:
+
+- `ELOWEN_CODEX_COMMAND=codex`
+
+Optional extra flags belong in `ELOWEN_CODEX_ARGS_JSON`. Example:
+
+```json
+["--model","gpt-5.4"]
+```
+
+Do not include `exec`, `-C`, `--cd`, `-o`, or `--output-last-message`. `elowen-edge` manages those parts of the Codex invocation itself.
 
 ## Run in the foreground
 
