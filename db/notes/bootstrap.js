@@ -32,6 +32,8 @@ ensurePersistentIndex("notes", ["note_id"], { unique: true, name: "idx_notes_not
 ensurePersistentIndex("notes", ["slug"], { unique: true, sparse: true, name: "idx_notes_slug" });
 ensurePersistentIndex("note_revisions", ["revision_id"], { unique: true, name: "idx_revisions_revision_id" });
 ensurePersistentIndex("note_revisions", ["note_id", "created_at"], { name: "idx_revisions_note_created" });
+ensurePersistentIndex("note_revisions", ["note_id", "version"], { unique: true, name: "idx_revisions_note_version" });
+ensurePersistentIndex("note_revisions", ["previous_revision_id"], { sparse: true, name: "idx_revisions_previous_revision" });
 ensurePersistentIndex("note_types", ["type_key"], { unique: true, name: "idx_note_types_type_key" });
 ensurePersistentIndex("attachments", ["attachment_id"], { unique: true, name: "idx_attachments_attachment_id" });
 

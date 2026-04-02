@@ -19,6 +19,18 @@ message NoteRecord {
   google.protobuf.Timestamp updated_at = 11;
 }
 
+message NoteAuthor {
+  string actor_type = 1;
+  string actor_id = 2;
+  string display_name = 3;
+}
+
+message NoteSourceReference {
+  string source_kind = 1;
+  string source_id = 2;
+  string label = 3;
+}
+
 message NoteRevision {
   string revision_id = 1;
   string note_id = 2;
@@ -27,6 +39,9 @@ message NoteRevision {
   string body_markdown = 5;
   google.protobuf.Struct frontmatter = 6;
   google.protobuf.Timestamp created_at = 7;
+  string previous_revision_id = 8;
+  NoteAuthor authored_by = 9;
+  repeated NoteSourceReference source_references = 10;
 }
 
 message NoteDetail {
@@ -42,14 +57,17 @@ message SearchNotesRequest {
 }
 
 message PromoteNoteRequest {
-  string source_kind = 1;
-  string source_id = 2;
-  string title = 3;
-  string slug = 4;
-  string summary = 5;
-  string body_markdown = 6;
-  repeated string tags = 7;
-  repeated string aliases = 8;
-  string note_type = 9;
-  google.protobuf.Struct frontmatter = 10;
+  string note_id = 1;
+  string source_kind = 2;
+  string source_id = 3;
+  string title = 4;
+  string slug = 5;
+  string summary = 6;
+  string body_markdown = 7;
+  repeated string tags = 8;
+  repeated string aliases = 9;
+  string note_type = 10;
+  google.protobuf.Struct frontmatter = 11;
+  NoteAuthor authored_by = 12;
+  repeated NoteSourceReference source_references = 13;
 }
