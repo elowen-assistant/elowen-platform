@@ -14,3 +14,8 @@ Shared platform repo for deployment, contracts, schema drafts, environment examp
 - `scripts/` - operational helpers
 
 This repo is where cross-service assets live before they are promoted into service-owned implementations.
+
+Current operational docs include:
+
+- [VPS Deployment](D:/Projects/elowen/elowen-platform/docs/vps-deployment.md)
+- [Laptop Edge](D:/Projects/elowen/elowen-platform/docs/laptop-edge.md)
