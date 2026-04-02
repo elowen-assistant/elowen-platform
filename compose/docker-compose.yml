@@ -55,6 +55,9 @@ services:
       ELOWEN_DATABASE_URL: postgres://elowen:elowen@postgres:5432/elowen
       ELOWEN_NATS_URL: nats://nats:4222
       ELOWEN_NOTES_URL: http://elowen-notes:8080
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      ELOWEN_ASSISTANT_MODEL: ${ELOWEN_ASSISTANT_MODEL:-gpt-4.1-mini}
+      ELOWEN_ASSISTANT_BASE_URL: ${ELOWEN_ASSISTANT_BASE_URL:-https://api.openai.com/v1}
       ELOWEN_LOG_FORMAT: json
       PORT: 8080
     ports:

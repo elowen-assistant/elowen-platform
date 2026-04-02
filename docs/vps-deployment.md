@@ -47,7 +47,8 @@ This document does not cover:
 1. Copy [`.env.vps.example`](D:/Projects/elowen/elowen-platform/env/.env.vps.example) to a real env file on the VPS.
 2. Replace `PUBLIC_HOSTNAME`, `ACME_EMAIL`, and all placeholder passwords.
 3. If `ELOWEN_ARANGODB_USERNAME=root`, set `ELOWEN_ARANGODB_PASSWORD` to the same value as `ARANGO_ROOT_PASSWORD`.
-4. Keep the env file out of git.
+4. Set `OPENAI_API_KEY` if you want Workflow #2 conversational replies enabled on the VPS-hosted orchestrator.
+5. Keep the env file out of git.
 
 Example:
 
@@ -84,6 +85,8 @@ docker compose \
   -f elowen-platform/compose/docker-compose.vps.yml \
   logs -f
 ```
+
+5. If Workflow #2 conversational chat is expected, verify `OPENAI_API_KEY` is present in the VPS env file and that `elowen-api` can reach `https://api.openai.com/v1`.
 
 ## Laptop edge validation
 

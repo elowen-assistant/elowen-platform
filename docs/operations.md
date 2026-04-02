@@ -16,6 +16,7 @@
 - `GET /health` is available on `elowen-api` and `elowen-notes`.
 - UI availability is validated with an HTTP 200 on `/`.
 - `docker compose ps` should show Postgres as healthy before the API starts.
+- Workflow #2 conversational replies require `OPENAI_API_KEY` plus reachable outbound HTTPS from `elowen-api` to the configured assistant base URL.
 
 ## Log Shape
 
@@ -46,6 +47,7 @@
 - If the UI appears frozen, verify the page is serving the static nginx build and reload after rebuilds.
 - If `cargo check` fails on Windows with linker errors, load `vcvars64.bat` before running Rust commands.
 - If note promotion fails, check `elowen-notes` logs first and verify ArangoDB is reachable on the configured URL.
+- If conversational replies stop working, inspect `elowen-api` logs and verify `OPENAI_API_KEY`, `ELOWEN_ASSISTANT_MODEL`, and `ELOWEN_ASSISTANT_BASE_URL`.
 - If dispatch stalls at probing or dispatched, inspect:
   - `elowen-edge` logs
   - `elowen.jobs.dispatch.{device_id}`
