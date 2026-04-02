@@ -1,0 +1,22 @@
+{
+	email {$ACME_EMAIL}
+}
+
+{$PUBLIC_HOSTNAME} {
+	encode gzip zstd
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+
+	@api path /api/*
+	handle @api {
+		reverse_proxy elowen-api:8080
+	}
+
+	handle {
+		reverse_proxy elowen-ui:3000
+	}
+}

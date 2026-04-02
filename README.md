@@ -5,6 +5,7 @@ Shared platform repo for deployment, contracts, schema drafts, environment examp
 ## Contents
 
 - `compose/` - local deployment stack
+- `compose/docker-compose.vps.yml` - VPS-oriented deployment stack
 - `contracts/` - protobuf definitions
 - `db/` - draft database schemas
 - `docs/` - shared platform documentation

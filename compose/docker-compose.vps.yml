@@ -1,0 +1,110 @@
+services:
+  caddy:
+    image: caddy:2.10-alpine
+    container_name: elowen-caddy
+    restart: unless-stopped
+    depends_on:
+      elowen-ui:
+        condition: service_started
+      elowen-api:
+        condition: service_started
+    environment:
+      PUBLIC_HOSTNAME: ${PUBLIC_HOSTNAME}
+      ACME_EMAIL: ${ACME_EMAIL}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+  postgres:
+    image: postgres:17
+    container_name: elowen-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ../db/postgres/schema.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  nats:
+    image: nats:2.11-alpine
+    container_name: elowen-nats
+    restart: unless-stopped
+    command: ["-c", "/etc/nats/nats-server.conf"]
+    ports:
+      - "127.0.0.1:${ELOWEN_NATS_HOST_PORT:-4222}:4222"
+    volumes:
+      - ./nats-server.conf:/etc/nats/nats-server.conf:ro
+      - nats-data:/data
+
+  arangodb:
+    image: arangodb:3.12
+    container_name: elowen-arangodb
+    restart: unless-stopped
+    environment:
+      ARANGO_ROOT_PASSWORD: ${ARANGO_ROOT_PASSWORD}
+    volumes:
+      - arangodb-data:/var/lib/arangodb3
+      - arangodb-apps:/var/lib/arangodb3-apps
+
+  elowen-api:
+    build:
+      context: ../../elowen-api
+    container_name: elowen-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      nats:
+        condition: service_started
+      elowen-notes:
+        condition: service_started
+    environment:
+      ELOWEN_DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      ELOWEN_NATS_URL: nats://nats:4222
+      ELOWEN_NOTES_URL: http://elowen-notes:8080
+      ELOWEN_LOG_FORMAT: ${ELOWEN_LOG_FORMAT:-json}
+      PORT: 8080
+
+  elowen-ui:
+    build:
+      context: ../../elowen-ui
+    container_name: elowen-ui
+    restart: unless-stopped
+    depends_on:
+      elowen-api:
+        condition: service_started
+
+  elowen-notes:
+    build:
+      context: ../../elowen-notes
+    container_name: elowen-notes
+    restart: unless-stopped
+    depends_on:
+      arangodb:
+        condition: service_started
+    environment:
+      ELOWEN_ARANGODB_URL: http://arangodb:8529
+      ELOWEN_ARANGODB_DATABASE: ${ELOWEN_ARANGODB_DATABASE}
+      ELOWEN_ARANGODB_USERNAME: ${ELOWEN_ARANGODB_USERNAME}
+      ELOWEN_ARANGODB_PASSWORD: ${ELOWEN_ARANGODB_PASSWORD}
+      ELOWEN_LOG_FORMAT: ${ELOWEN_LOG_FORMAT:-json}
+      PORT: 8080
+
+volumes:
+  caddy-data:
+  caddy-config:
+  postgres-data:
+  nats-data:
+  arangodb-data:
+  arangodb-apps:
