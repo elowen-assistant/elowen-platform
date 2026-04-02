@@ -54,6 +54,7 @@ Expected baseline values:
 - `ELOWEN_NATS_URL=nats://127.0.0.1:4222`
 - `ELOWEN_EDGE_WORKSPACE_ROOT=<local workspace path>`
 - `ELOWEN_EDGE_WORKTREE_ROOT=<local workspace path>\.elowen\worktrees`
+- `ELOWEN_SANDBOX_MODE=workspace`
 
 To enable the real Codex runner, also set:
 
@@ -66,6 +67,8 @@ Optional extra flags belong in `ELOWEN_CODEX_ARGS_JSON`. Example:
 ```
 
 Do not include `exec`, `-C`, `--cd`, `-o`, or `--output-last-message`. `elowen-edge` manages those parts of the Codex invocation itself.
+
+The edge runtime now enforces a worktree sandbox by default. Validation commands must stay inside the job worktree and cannot be launched through shell interpreters such as `powershell`, `cmd`, `sh`, or `bash`. Use `ELOWEN_SANDBOX_MODE=off` only for deliberate local debugging.
 
 ## Run in the foreground
 
