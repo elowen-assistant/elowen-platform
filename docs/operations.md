@@ -4,6 +4,7 @@
 
 - Start the stack with `docker compose -f elowen-platform/compose/docker-compose.yml up --build -d`.
 - Stop the stack with `docker compose -f elowen-platform/compose/docker-compose.yml down`.
+- VPS deploys should pull prebuilt GHCR images with `docker compose pull` and then `docker compose up -d`.
 - The default local endpoints are:
   - API: `http://localhost:8080`
   - UI: `http://localhost:3000`
@@ -45,6 +46,7 @@
 ## Troubleshooting
 
 - If the UI appears frozen, verify the page is serving the static nginx build and reload after rebuilds.
+- If a VPS deploy fails to start updated services, verify the requested GHCR tags exist and that the VPS can authenticate to `ghcr.io` if the packages are private.
 - If `cargo check` fails on Windows with linker errors, load `vcvars64.bat` before running Rust commands.
 - If note promotion fails, check `elowen-notes` logs first and verify ArangoDB is reachable on the configured URL.
 - If conversational replies stop working, inspect `elowen-api` logs and verify `OPENAI_API_KEY`, `ELOWEN_ASSISTANT_MODEL`, and `ELOWEN_ASSISTANT_BASE_URL`.

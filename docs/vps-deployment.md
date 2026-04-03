@@ -7,6 +7,7 @@ This runbook is the Slice 12 deployment path for a remotely hosted orchestrator 
 This document covers:
 
 - deploying `elowen-ui`, `elowen-api`, `elowen-notes`, `postgres`, and `nats` on one VPS
+- pulling prebuilt service images from GitHub Container Registry instead of compiling Rust on the VPS
 - exposing the UI and API publicly over HTTPS
 - keeping Postgres, ArangoDB, and NATS off the public internet
 - validating that a laptop-hosted `elowen-edge` can register and receive a manually created job from the remote UI
@@ -48,7 +49,8 @@ This document does not cover:
 2. Replace `PUBLIC_HOSTNAME`, `ACME_EMAIL`, and all placeholder passwords.
 3. If `ELOWEN_ARANGODB_USERNAME=root`, set `ELOWEN_ARANGODB_PASSWORD` to the same value as `ARANGO_ROOT_PASSWORD`.
 4. Set `OPENAI_API_KEY` if you want Workflow #2 conversational replies enabled on the VPS-hosted orchestrator.
-5. Keep the env file out of git.
+5. Set `ELOWEN_API_TAG`, `ELOWEN_NOTES_TAG`, and `ELOWEN_UI_TAG` to the image tags you want to deploy.
+6. Keep the env file out of git.
 
 Example:
 
@@ -56,15 +58,46 @@ Example:
 cp elowen-platform/env/.env.vps.example elowen-platform/env/.env.vps
 ```
 
+For reproducible deploys, pin the image tags to the exact submodule SHAs recorded in the workspace commit:
+
+```bash
+git -C elowen-api rev-parse HEAD
+git -C elowen-notes rev-parse HEAD
+git -C elowen-ui rev-parse HEAD
+```
+
+Then set:
+
+```bash
+ELOWEN_API_TAG=sha-<elowen-api sha>
+ELOWEN_NOTES_TAG=sha-<elowen-notes sha>
+ELOWEN_UI_TAG=sha-<elowen-ui sha>
+```
+
+If the GHCR packages are private, authenticate once on the VPS before the first pull:
+
+```bash
+docker login ghcr.io
+```
+
 ## Deploy
 
 From the workspace root on the VPS:
 
 ```bash
+git checkout main
+git pull --ff-only origin main
+git submodule update --init --recursive
+
 docker compose \
   --env-file elowen-platform/env/.env.vps \
   -f elowen-platform/compose/docker-compose.vps.yml \
-  up --build -d
+  pull elowen-api elowen-ui elowen-notes
+
+docker compose \
+  --env-file elowen-platform/env/.env.vps \
+  -f elowen-platform/compose/docker-compose.vps.yml \
+  up -d
 ```
 
 ## Verify the VPS services
@@ -87,6 +120,14 @@ docker compose \
 ```
 
 5. If Workflow #2 conversational chat is expected, verify `OPENAI_API_KEY` is present in the VPS env file and that `elowen-api` can reach `https://api.openai.com/v1`.
+6. Confirm the running image references match the expected tags:
+
+```bash
+docker compose \
+  --env-file elowen-platform/env/.env.vps \
+  -f elowen-platform/compose/docker-compose.vps.yml \
+  images
+```
 
 ## Laptop edge validation
 
@@ -127,4 +168,5 @@ elowen-edge
 - `nats` is intentionally not exposed on a public interface in this Slice 12 path.
 - If the laptop disconnects, job dispatch will stall after probing or dispatch.
 - `caddy` stores ACME state in the `caddy-data` volume.
+- Rust and WASM builds should happen in GitHub Actions, not on the VPS.
 - The current deployment is still single-node and local-first in spirit. It is enough to prove the remote split, not to claim production hardening.

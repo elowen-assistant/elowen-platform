@@ -58,8 +58,7 @@ services:
       - arangodb-apps:/var/lib/arangodb3-apps
 
   elowen-api:
-    build:
-      context: ../../elowen-api
+    image: ${ELOWEN_API_IMAGE:-ghcr.io/elowen-assistant/elowen-api}:${ELOWEN_API_TAG:-main}
     container_name: elowen-api
     restart: unless-stopped
     depends_on:
@@ -80,8 +79,7 @@ services:
       PORT: 8080
 
   elowen-ui:
-    build:
-      context: ../../elowen-ui
+    image: ${ELOWEN_UI_IMAGE:-ghcr.io/elowen-assistant/elowen-ui}:${ELOWEN_UI_TAG:-main}
     container_name: elowen-ui
     restart: unless-stopped
     depends_on:
@@ -89,8 +87,7 @@ services:
         condition: service_started
 
   elowen-notes:
-    build:
-      context: ../../elowen-notes
+    image: ${ELOWEN_NOTES_IMAGE:-ghcr.io/elowen-assistant/elowen-notes}:${ELOWEN_NOTES_TAG:-main}
     container_name: elowen-notes
     restart: unless-stopped
     depends_on:
