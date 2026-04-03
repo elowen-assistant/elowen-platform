@@ -13,6 +13,7 @@ create table if not exists messages (
     role text not null,
     content text not null,
     status text not null default 'committed',
+    payload_json jsonb not null default '{}'::jsonb,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
 );
