@@ -55,3 +55,14 @@ message ApprovalResolution {
   string reason = 5;
   google.protobuf.Timestamp resolved_at = 6;
 }
+
+message ApprovalExecutionCommand {
+  string approval_id = 1;
+  string job_id = 2;
+  string correlation_id = 3;
+  string device_id = 4;
+  ApprovalActionType action_type = 5;
+  string repo_name = 6;
+  string branch_name = 7;
+  google.protobuf.Timestamp approved_at = 8;
+}

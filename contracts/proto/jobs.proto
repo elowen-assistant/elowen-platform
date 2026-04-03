@@ -18,6 +18,7 @@ enum JobStatus {
   JOB_STATUS_COMPLETED = 7;
   JOB_STATUS_FAILED = 8;
   JOB_STATUS_CANCELLED = 9;
+  JOB_STATUS_PUSHING = 10;
 }
 
 enum JobResult {
