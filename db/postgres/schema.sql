@@ -89,8 +89,16 @@ create table if not exists note_references (
     primary key (note_id, source_type, source_id)
 );
 
+create table if not exists ui_sessions (
+    token text primary key,
+    operator_label text not null,
+    created_at timestamptz not null default now(),
+    expires_at timestamptz not null
+);
+
 create index if not exists idx_messages_thread_id on messages(thread_id);
 create index if not exists idx_jobs_thread_id on jobs(thread_id);
 create index if not exists idx_jobs_device_id on jobs(device_id);
 create index if not exists idx_job_events_job_id on job_events(job_id);
 create index if not exists idx_approvals_job_id on approvals(job_id);
+create index if not exists idx_ui_sessions_expires_at on ui_sessions(expires_at);

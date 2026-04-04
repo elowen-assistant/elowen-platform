@@ -49,8 +49,10 @@ This document does not cover:
 2. Replace `PUBLIC_HOSTNAME`, `ACME_EMAIL`, and all placeholder passwords.
 3. If `ELOWEN_ARANGODB_USERNAME=root`, set `ELOWEN_ARANGODB_PASSWORD` to the same value as `ARANGO_ROOT_PASSWORD`.
 4. Set `OPENAI_API_KEY` if you want Workflow #2 conversational replies enabled on the VPS-hosted orchestrator.
-5. Set `ELOWEN_API_TAG`, `ELOWEN_NOTES_TAG`, and `ELOWEN_UI_TAG` to the image tags you want to deploy.
-6. Keep the env file out of git.
+5. Set `ELOWEN_UI_PASSWORD` if you want the web UI authentication boundary enabled. Leave it empty only if you explicitly want the trusted-single-operator mode.
+6. Optionally set `ELOWEN_UI_OPERATOR_LABEL` to the name shown in the UI after sign-in.
+7. Set `ELOWEN_API_TAG`, `ELOWEN_NOTES_TAG`, and `ELOWEN_UI_TAG` to the image tags you want to deploy.
+8. Keep the env file out of git.
 
 Example:
 
@@ -104,7 +106,8 @@ docker compose \
 
 1. Open `https://<PUBLIC_HOSTNAME>/`.
 2. Confirm the UI loads.
-3. Confirm the API is reachable through the same origin:
+3. If `ELOWEN_UI_PASSWORD` is set, confirm the sign-in screen appears and accepts the configured password.
+4. Confirm the API is reachable through the same origin:
 
 ```bash
 curl https://<PUBLIC_HOSTNAME>/api/v1/threads
