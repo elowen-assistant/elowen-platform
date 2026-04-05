@@ -148,12 +148,16 @@ $env:ELOWEN_NATS_URL="nats://127.0.0.1:4222"
 $env:ELOWEN_DEVICE_ID="elowen-laptop"
 $env:ELOWEN_DEVICE_NAME="Elowen Laptop"
 $env:ELOWEN_DEVICE_PRIMARY="true"
-$env:ELOWEN_ALLOWED_REPOS="elowen-api,elowen-ui,elowen-edge,elowen-notes,elowen-platform"
+$env:ELOWEN_ALLOWED_REPO_ROOTS="D:\Projects"
+# Optional explicit repo-name overlay for exceptions or supplements.
+$env:ELOWEN_ALLOWED_REPOS="elowen-api"
 $env:ELOWEN_DEVICE_CAPABILITIES="codex,git,build,test"
 $env:ELOWEN_EDGE_WORKSPACE_ROOT="D:\Projects\elowen"
 $env:ELOWEN_EDGE_WORKTREE_ROOT="D:\Projects\elowen\.elowen\worktrees"
 elowen-edge
 ```
+
+`ELOWEN_ALLOWED_REPO_ROOTS` is the preferred way to expose repositories to the orchestrator. The edge discovers nested git repositories under those parent directories during registration, while `ELOWEN_ALLOWED_REPOS` remains available as an explicit overlay for one-off additions or exceptions.
 
 ## Slice 12 validation checklist
 
