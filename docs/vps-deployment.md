@@ -51,8 +51,9 @@ This document does not cover:
 4. Set `OPENAI_API_KEY` if you want Workflow #2 conversational replies enabled on the VPS-hosted orchestrator.
 5. Set `ELOWEN_UI_PASSWORD` if you want the web UI authentication boundary enabled. Leave it empty only if you explicitly want the trusted-single-operator mode.
 6. Optionally set `ELOWEN_UI_OPERATOR_LABEL` to the name shown in the UI after sign-in.
-7. Set `ELOWEN_API_TAG`, `ELOWEN_NOTES_TAG`, and `ELOWEN_UI_TAG` to the image tags you want to deploy.
-8. Keep the env file out of git.
+7. Optionally set `ELOWEN_ORCHESTRATOR_SIGNING_KEY` and `ELOWEN_REQUIRE_TRUSTED_EDGE_REGISTRATION=true` to require Slice 28 signed edge registration.
+8. Set `ELOWEN_API_TAG`, `ELOWEN_NOTES_TAG`, and `ELOWEN_UI_TAG` to the image tags you want to deploy.
+9. Keep the env file out of git.
 
 Example:
 
@@ -154,10 +155,16 @@ $env:ELOWEN_ALLOWED_REPOS="elowen-api"
 $env:ELOWEN_DEVICE_CAPABILITIES="codex,git,build,test"
 $env:ELOWEN_EDGE_WORKSPACE_ROOT="D:\Projects\elowen"
 $env:ELOWEN_EDGE_WORKTREE_ROOT="D:\Projects\elowen\.elowen\worktrees"
+# Optional Slice 28 trusted registration. Use the orchestrator public key that
+# matches ELOWEN_ORCHESTRATOR_SIGNING_KEY, plus this edge's private signing key.
+# $env:ELOWEN_ORCHESTRATOR_PUBLIC_KEY="<base64url-no-pad Ed25519 public key>"
+# $env:ELOWEN_EDGE_SIGNING_KEY="<base64url-no-pad Ed25519 private key>"
 elowen-edge
 ```
 
 `ELOWEN_ALLOWED_REPO_ROOTS` is the preferred way to expose repositories to the orchestrator. The edge discovers nested git repositories under those parent directories during registration, while `ELOWEN_ALLOWED_REPOS` remains available as an explicit overlay for one-off additions or exceptions.
+
+Trusted edge registration is opt-in for rollout safety. When enabled on the API, an edge must first fetch an orchestrator-signed registration challenge, verify it against the pinned orchestrator public key, and attach an edge-signed proof to registration.
 
 ## Slice 12 validation checklist
 
