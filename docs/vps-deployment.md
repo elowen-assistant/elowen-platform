@@ -166,6 +166,14 @@ elowen-edge
 
 Trusted edge registration is opt-in for rollout safety. When enabled on the API, an edge must first fetch an orchestrator-signed registration challenge, verify it against the pinned orchestrator public key, and attach an edge-signed proof to registration.
 
+Generate compatible keypairs from a trusted workstation with:
+
+```bash
+elowen-edge --generate-trust-keypair
+```
+
+Use one generated private key as `ELOWEN_ORCHESTRATOR_SIGNING_KEY` on the VPS, and give the matching public key to edges as `ELOWEN_ORCHESTRATOR_PUBLIC_KEY`. Generate a separate keypair per edge device, put its private key in `ELOWEN_EDGE_SIGNING_KEY`, and let the API store the public key during trusted registration.
+
 ## Slice 12 validation checklist
 
 1. Deploy the VPS stack successfully.
