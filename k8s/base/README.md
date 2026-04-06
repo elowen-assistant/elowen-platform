@@ -8,6 +8,7 @@ Notes:
 - Stateful dependencies are included as simple `StatefulSet` definitions so the stack shape is explicit.
 - Secrets use placeholder values and must be replaced before real deployment.
 - The edge agent assumes a writable shared workspace path and should be revisited before multi-node deployment.
+- These manifests have not been validated against the current trusted edge registration and GHCR image deployment model.
 
 Apply with:
 
