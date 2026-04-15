@@ -185,6 +185,15 @@ Use one generated private key as `ELOWEN_ORCHESTRATOR_SIGNING_KEY` on the VPS, a
 7. Create a job from the remote UI.
 8. Confirm the job is dispatched to the laptop and job events appear in the remote UI.
 
+## Slice 29 realtime recovery checklist
+
+1. Sign in to the remote UI, select a thread and job, and enter unsent composer text.
+2. Trigger background thread or job updates and confirm the selected thread, selected job, details panel state, transcript position, and composer text remain stable.
+3. Interrupt realtime delivery by temporarily stopping or isolating `elowen-api`, then confirm the UI switches to a degraded realtime state while remaining usable under polling fallback.
+4. Restore API connectivity and confirm the UI automatically reconnects, catches up thread/job state, and returns to a connected realtime state without forcing a full page reset.
+5. Trigger `thread.changed`, `job.changed`, and `device.changed` flows and confirm the expected UI regions refresh without losing local interaction state.
+6. Expire the UI session or sign out and confirm the UI transitions to a disconnected state and does not keep retrying realtime until the next successful sign-in.
+
 ## Operational notes
 
 - `nats` is intentionally not exposed on a public interface in this Slice 12 path.
