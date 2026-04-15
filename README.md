@@ -1,30 +1,49 @@
 # elowen-platform
 
-Shared platform repo for deployment, contracts, schema drafts, environment examples, architecture notes, and helper scripts.
+## Purpose
 
-## Contents
+Shared platform repository for deployment topology, environment examples, contracts, schema drafts, operational scripts, and architecture notes used across Elowen services.
 
-- `compose/` - local deployment stack
-- `compose/docker-compose.vps.yml` - VPS-oriented deployment stack
-- `contracts/` - protobuf definitions
-- `db/` - draft database schemas
-- `docs/` - shared platform documentation
+## Current Responsibilities
+
+- define Docker Compose deployment inputs for local and VPS environments
+- hold shared protobuf contracts and draft schema material
+- document VPS deployment, laptop edge operation, and other operational runbooks
+- keep architecture decision records and helper scripts alongside platform docs
+- provide environment-file examples and migration scaffolding such as Kubernetes manifests
+
+## Repository Layout
+
+- `compose/` - local and VPS Compose stacks
+- `contracts/` - shared protobuf definitions
+- `db/` - schema drafts and database notes
+- `docs/` - operational documentation
 - `env/` - example environment files
 - `adr/` - architecture decision records
+- `k8s/` - Kubernetes migration scaffolding
 - `scripts/` - operational helpers
 
-This repo is where cross-service assets live before they are promoted into service-owned implementations.
+## Runtime And Config Entrypoints
 
-## Current Operational Baseline
+Common entrypoints:
 
-- VPS deployment uses Docker Compose and prebuilt GHCR images for `elowen-api`, `elowen-notes`, and `elowen-ui`.
-- Local/laptop execution uses a standalone `elowen-edge` process with env-file startup and a local NATS tunnel.
-- Web UI access is protected by API-issued cookie sessions when `ELOWEN_UI_PASSWORD` is configured.
-- Edge registration can require signed trust proof when `ELOWEN_REQUIRE_TRUSTED_EDGE_REGISTRATION=true`.
-- Edge repository access is primarily declared through parent-directory discovery with optional explicit repo overlays.
-- Kubernetes manifests remain migration scaffolding, not the active production deployment path.
+```bash
+docker compose -f compose/docker-compose.vps.yml config
+docker compose -f compose/docker-compose.vps.yml up -d
+```
 
-Current operational docs include:
+Use the docs in `docs/` and the example files in `env/` to assemble service-specific runtime configuration.
 
-- [VPS Deployment](D:/Projects/elowen/elowen-platform/docs/vps-deployment.md)
-- [Laptop Edge](D:/Projects/elowen/elowen-platform/docs/laptop-edge.md)
+## Local Verification
+
+```bash
+docker compose -f compose/docker-compose.vps.yml config
+```
+
+Review platform changes alongside the affected docs, env examples, and scripts.
+
+## Related Docs
+
+- `docs/vps-deployment.md`
+- `docs/laptop-edge.md`
+- `env/`
