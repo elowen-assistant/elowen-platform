@@ -113,6 +113,28 @@ docker compose \
   up -d
 ```
 
+## Fast UI dev loop
+
+For UI-only iteration, you can skip the GHCR publish step and build `elowen-ui` directly from the VPS checkout.
+
+The override file is [docker-compose.vps.dev-ui.yml](D:/Projects/elowen/elowen-platform/compose/docker-compose.vps.dev-ui.yml), and the local helper is [deploy-ui-fast.ps1](D:/Projects/elowen/elowen-platform/scripts/deploy-ui-fast.ps1).
+
+From the local workspace root:
+
+```powershell
+./elowen-platform/scripts/deploy-ui-fast.ps1
+```
+
+What this does:
+
+1. Archives the local `elowen-ui` working tree, excluding `.git`.
+2. Uploads that archive to a temporary path on the VPS.
+3. Writes a temporary UI-only compose override on the VPS so the dirty platform checkout is left alone.
+4. Builds only `elowen-ui` from that temporary source tree.
+5. Restarts only the `elowen-ui` service.
+
+Use the normal GHCR-tagged deploy path when you want a reproducible checkpoint shared with others. Use the fast loop when you are iterating on UI fixes and just need the VPS refreshed quickly.
+
 ## Verify the VPS services
 
 1. Open `https://<PUBLIC_HOSTNAME>/`.
@@ -161,6 +183,10 @@ $env:ELOWEN_DEVICE_ID="elowen-laptop"
 $env:ELOWEN_DEVICE_NAME="Elowen Laptop"
 $env:ELOWEN_DEVICE_PRIMARY="true"
 $env:ELOWEN_ALLOWED_REPO_ROOTS="D:\Projects"
+# Optional nested paths under the trusted roots that should never be scanned.
+$env:ELOWEN_REPO_SCAN_EXCLUDE_PATHS="D:\Projects\archive"
+# Optional repo names to keep out of the orchestrator repository picker.
+$env:ELOWEN_HIDDEN_REPOS="personal-scratch"
 # Optional explicit repo-name overlay for exceptions or supplements.
 $env:ELOWEN_ALLOWED_REPOS="elowen-api"
 $env:ELOWEN_DEVICE_CAPABILITIES="codex,git,build,test"
@@ -173,7 +199,7 @@ $env:ELOWEN_EDGE_WORKTREE_ROOT="D:\Projects\elowen\.elowen\worktrees"
 elowen-edge
 ```
 
-`ELOWEN_ALLOWED_REPO_ROOTS` is the preferred way to expose repositories to the orchestrator. The edge discovers nested git repositories under those parent directories during registration, while `ELOWEN_ALLOWED_REPOS` remains available as an explicit overlay for one-off additions or exceptions.
+`ELOWEN_ALLOWED_REPO_ROOTS` is the preferred way to expose repositories to the orchestrator. The edge discovers nested git repositories under those parent directories during registration, while `ELOWEN_REPO_SCAN_EXCLUDE_PATHS` and `ELOWEN_HIDDEN_REPOS` let each device trim that set before it reaches the UI selection flow. `ELOWEN_ALLOWED_REPOS` remains available as an explicit overlay for one-off additions or exceptions.
 
 Trusted edge registration is opt-in for rollout safety. When enabled on the API, an edge must first fetch an orchestrator-signed registration challenge, verify it against the pinned orchestrator public key, and attach an edge-signed proof to registration.
 

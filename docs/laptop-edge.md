@@ -53,11 +53,13 @@ Expected baseline values:
 - `ELOWEN_API_URL=https://<PUBLIC_HOSTNAME>`
 - `ELOWEN_NATS_URL=nats://127.0.0.1:4222`
 - `ELOWEN_ALLOWED_REPO_ROOTS=<parent directory or directories that contain local git repos>`
+- `ELOWEN_REPO_SCAN_EXCLUDE_PATHS=<optional nested paths under those roots to skip>`
+- `ELOWEN_HIDDEN_REPOS=<optional repo names to keep out of dispatch pickers>`
 - `ELOWEN_EDGE_WORKSPACE_ROOT=<local workspace path>`
 - `ELOWEN_EDGE_WORKTREE_ROOT=<local workspace path>\.elowen\worktrees`
 - `ELOWEN_SANDBOX_MODE=workspace`
 
-`ELOWEN_ALLOWED_REPO_ROOTS` is the preferred repository declaration. The edge discovers nested git repositories under those trusted roots and advertises them during device registration. Keep `ELOWEN_ALLOWED_REPOS` only as an optional explicit overlay when you need a manual supplement or exception.
+`ELOWEN_ALLOWED_REPO_ROOTS` is the preferred repository declaration. The edge discovers nested git repositories under those trusted roots and advertises them during device registration. Use `ELOWEN_REPO_SCAN_EXCLUDE_PATHS` when a trusted parent contains subtrees that should never be scanned, and `ELOWEN_HIDDEN_REPOS` when a discovered repository should stay out of the orchestrator's selection UX. Keep `ELOWEN_ALLOWED_REPOS` only as an optional explicit overlay when you need a manual supplement or exception.
 
 To enable the real Codex runner, also set:
 

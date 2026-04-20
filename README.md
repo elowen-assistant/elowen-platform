@@ -32,6 +32,12 @@ docker compose -f compose/docker-compose.vps.yml config
 docker compose -f compose/docker-compose.vps.yml up -d
 ```
 
+For a faster UI-only VPS dev loop, there is also a compose override and helper script that sync the local `elowen-ui` working tree to a temporary VPS build context, then rebuild only `elowen-ui` instead of waiting on a published GHCR image:
+
+```powershell
+./scripts/deploy-ui-fast.ps1
+```
+
 Use the docs in `docs/` and the example files in `env/` to assemble service-specific runtime configuration.
 
 ## Local Verification

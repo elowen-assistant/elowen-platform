@@ -13,6 +13,10 @@ message Device {
   google.protobuf.Timestamp registered_at = 6;
   google.protobuf.Timestamp last_seen_at = 7;
   AvailabilityResponse last_probe = 8;
+  repeated string allowed_repo_roots = 9;
+  repeated string hidden_repos = 10;
+  repeated string excluded_repo_paths = 11;
+  repeated string discovered_repos = 12;
 }
 
 message DeviceRegistration {
@@ -22,6 +26,10 @@ message DeviceRegistration {
   repeated string allowed_repos = 4;
   repeated string capabilities = 5;
   google.protobuf.Timestamp registered_at = 6;
+  repeated string allowed_repo_roots = 7;
+  repeated string hidden_repos = 8;
+  repeated string excluded_repo_paths = 9;
+  repeated string discovered_repos = 10;
 }
 
 message ProbeDeviceRequest {

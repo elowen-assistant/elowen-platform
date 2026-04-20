@@ -1,0 +1,6 @@
+services:
+  elowen-ui:
+    build:
+      context: ../../elowen-ui
+      dockerfile: Dockerfile
+    image: elowen-ui:dev-vps
