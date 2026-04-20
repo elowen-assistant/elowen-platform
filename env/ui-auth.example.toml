@@ -1,0 +1,32 @@
+# Copy this file outside git for real deployments and replace each
+# `password_hash` placeholder with a real Argon2id PHC string.
+#
+# Example shape:
+# [[accounts]]
+# username = "admin"
+# display_name = "Elowen Admin"
+# role = "admin"
+# password_hash = "$argon2id$v=19$m=19456,t=2,p=1$<salt>$<hash>"
+#
+# Roles:
+# - viewer
+# - operator
+# - admin
+
+[[accounts]]
+username = "viewer"
+display_name = "Viewer User"
+role = "viewer"
+password_hash = "REPLACE_WITH_ARGON2ID_HASH"
+
+[[accounts]]
+username = "operator"
+display_name = "Operator User"
+role = "operator"
+password_hash = "REPLACE_WITH_ARGON2ID_HASH"
+
+[[accounts]]
+username = "admin"
+display_name = "Admin User"
+role = "admin"
+password_hash = "REPLACE_WITH_ARGON2ID_HASH"

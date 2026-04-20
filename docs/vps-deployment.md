@@ -49,16 +49,26 @@ This document does not cover:
 2. Replace `PUBLIC_HOSTNAME`, `ACME_EMAIL`, and all placeholder passwords.
 3. If `ELOWEN_ARANGODB_USERNAME=root`, set `ELOWEN_ARANGODB_PASSWORD` to the same value as `ARANGO_ROOT_PASSWORD`.
 4. Set `OPENAI_API_KEY` if you want Workflow #2 conversational replies enabled on the VPS-hosted orchestrator.
-5. Set `ELOWEN_UI_PASSWORD` if you want the web UI authentication boundary enabled. Leave it empty only if you explicitly want the trusted-single-operator mode.
-6. Optionally set `ELOWEN_UI_OPERATOR_LABEL` to the name shown in the UI after sign-in.
-7. Optionally set `ELOWEN_ORCHESTRATOR_SIGNING_KEY` and `ELOWEN_REQUIRE_TRUSTED_EDGE_REGISTRATION=true` to require Slice 28 signed edge registration.
-8. Set `ELOWEN_API_TAG`, `ELOWEN_NOTES_TAG`, and `ELOWEN_UI_TAG` to the image tags you want to deploy.
-9. Keep the env file out of git.
+5. Prefer local-account auth by placing a TOML file under `elowen-platform/env/` that contains named `viewer`, `operator`, and `admin` accounts, then set `ELOWEN_UI_AUTH_CONFIG_PATH` to the matching in-container path under `/run/elowen-env/`. Use [ui-auth.example.toml](D:/Projects/elowen/elowen-platform/env/ui-auth.example.toml) as the shape reference.
+6. Keep `ELOWEN_UI_COOKIE_SECURE=true` for the HTTPS VPS deployment so session cookies are marked `Secure`.
+7. Leave `ELOWEN_UI_PASSWORD` empty when using the account config. It remains available only as a legacy compatibility fallback that synthesizes one admin account.
+8. If you intentionally use the legacy fallback instead of the account config, set `ELOWEN_UI_PASSWORD` and optionally `ELOWEN_UI_OPERATOR_LABEL`.
+9. Optionally set `ELOWEN_ORCHESTRATOR_SIGNING_KEY` and `ELOWEN_REQUIRE_TRUSTED_EDGE_REGISTRATION=true` to require Slice 28 signed edge registration.
+10. Set `ELOWEN_API_TAG`, `ELOWEN_NOTES_TAG`, and `ELOWEN_UI_TAG` to the image tags you want to deploy.
+11. Keep the env file and any auth-config file out of git.
 
 Example:
 
 ```bash
 cp elowen-platform/env/.env.vps.example elowen-platform/env/.env.vps
+```
+
+Example account-auth path:
+
+```bash
+cp elowen-platform/env/ui-auth.example.toml elowen-platform/env/ui-auth.vps.toml
+# Then set:
+# ELOWEN_UI_AUTH_CONFIG_PATH=/run/elowen-env/ui-auth.vps.toml
 ```
 
 For reproducible deploys, pin the image tags to the exact submodule SHAs recorded in the workspace commit:
@@ -107,14 +117,15 @@ docker compose \
 
 1. Open `https://<PUBLIC_HOSTNAME>/`.
 2. Confirm the UI loads.
-3. If `ELOWEN_UI_PASSWORD` is set, confirm the sign-in screen appears and accepts the configured password.
-4. Confirm the API is reachable through the same origin:
+3. If `ELOWEN_UI_AUTH_CONFIG_PATH` is set, confirm the sign-in screen accepts a configured username and password and that role-based UI affordances match the signed-in account.
+4. If the legacy `ELOWEN_UI_PASSWORD` fallback is used instead, confirm the shared-password sign-in still works.
+5. Confirm the API is reachable through the same origin:
 
 ```bash
 curl https://<PUBLIC_HOSTNAME>/api/v1/threads
 ```
 
-4. Inspect logs if anything fails:
+6. Inspect logs if anything fails:
 
 ```bash
 docker compose \
@@ -123,8 +134,8 @@ docker compose \
   logs -f
 ```
 
-5. If Workflow #2 conversational chat is expected, verify `OPENAI_API_KEY` is present in the VPS env file and that `elowen-api` can reach `https://api.openai.com/v1`.
-6. Confirm the running image references match the expected tags:
+7. If Workflow #2 conversational chat is expected, verify `OPENAI_API_KEY` is present in the VPS env file and that `elowen-api` can reach `https://api.openai.com/v1`.
+8. Confirm the running image references match the expected tags:
 
 ```bash
 docker compose \
