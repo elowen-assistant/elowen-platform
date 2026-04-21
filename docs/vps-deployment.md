@@ -11,6 +11,7 @@ This document covers:
 - exposing the UI and API publicly over HTTPS
 - keeping Postgres, ArangoDB, and NATS off the public internet
 - validating that a laptop-hosted `elowen-edge` can register and receive a manually created job from the remote UI
+- operating the Slice 34 trust lifecycle for orchestrator rotation, edge rotation, revocation, and additional trusted edges
 
 This document does not cover:
 
@@ -53,7 +54,7 @@ This document does not cover:
 6. Keep `ELOWEN_UI_COOKIE_SECURE=true` for the HTTPS VPS deployment so session cookies are marked `Secure`.
 7. Leave `ELOWEN_UI_PASSWORD` empty when using the account config. It remains available only as a legacy compatibility fallback that synthesizes one admin account.
 8. If you intentionally use the legacy fallback instead of the account config, set `ELOWEN_UI_PASSWORD` and optionally `ELOWEN_UI_OPERATOR_LABEL`.
-9. Optionally set `ELOWEN_ORCHESTRATOR_SIGNING_KEY` and `ELOWEN_REQUIRE_TRUSTED_EDGE_REGISTRATION=true` to require Slice 28 signed edge registration.
+9. Set `ELOWEN_ORCHESTRATOR_SIGNING_KEY` and `ELOWEN_REQUIRE_TRUSTED_EDGE_REGISTRATION=true` when you want trusted edge registration enforced. Keep a separate operator-owned trust inventory that records the current orchestrator signer fingerprint, every enrolled device ID, the current edge key fingerprint for that device, and any revocation or rotation notes.
 10. Set `ELOWEN_API_TAG`, `ELOWEN_NOTES_TAG`, and `ELOWEN_UI_TAG` to the image tags you want to deploy.
 11. Keep the env file and any auth-config file out of git.
 
@@ -113,6 +114,104 @@ docker compose \
   up -d
 ```
 
+## Lower-impact deploys
+
+For day-to-day VPS testing from a developer workstation, the default path should be the prebuilt image-transfer workflow:
+
+```powershell
+./elowen-platform/scripts/deploy-app-prebuilt.ps1
+```
+
+Use the VPS source-build workflow only if the prebuilt route is unavailable or debugging specifically requires it.
+
+The cheapest VPS deploy path is:
+
+1. compile binaries and static assets on a stronger machine or CI runner
+2. assemble runtime-only container images from those finished artifacts
+3. push the images to GHCR
+4. let the VPS only `docker pull` and restart containers
+
+That avoids Rust and WASM compilation on the VPS entirely.
+
+Two lightweight runtime-only Dockerfiles are available:
+
+- [elowen-api/Dockerfile.prebuilt](C:/Users/ericw/Projects/elowen/elowen-api/Dockerfile.prebuilt)
+- [elowen-ui/Dockerfile.prebuilt](C:/Users/ericw/Projects/elowen/elowen-ui/Dockerfile.prebuilt)
+
+The local helper script builds artifacts first, then packages those artifacts into images without compiling inside `docker build`:
+
+```powershell
+./elowen-platform/scripts/build-prebuilt-images.ps1 -Push
+```
+
+By default it:
+
+1. runs `cargo build --release` for `elowen-api`
+2. runs `trunk build --release` for `elowen-ui`
+3. copies the finished outputs into each repo's `build/` directory
+4. builds runtime-only images from `Dockerfile.prebuilt`
+5. optionally pushes those images to GHCR
+
+Useful variants:
+
+```powershell
+./elowen-platform/scripts/build-prebuilt-images.ps1 -ApiOnly -Push
+./elowen-platform/scripts/build-prebuilt-images.ps1 -UiOnly -Push
+./elowen-platform/scripts/build-prebuilt-images.ps1 -ApiTag sha-abc123 -UiTag sha-def456 -Push
+```
+
+After that, set the matching tags in `elowen-platform/env/.env.vps` and use the normal pull-based deploy flow on the VPS.
+
+If you just need to refresh the full app from a dirty local workspace and do not want to push to GHCR, use the repeatable prebuilt app helper:
+
+```powershell
+./elowen-platform/scripts/deploy-app-prebuilt.ps1
+```
+
+That workflow:
+
+1. builds the Linux `elowen-api` binary locally inside Docker
+2. builds the `elowen-ui` artifact locally
+3. packages runtime-only API and UI images locally
+4. streams those images directly to the VPS with `docker load`
+5. retags them as local VPS images
+6. restarts `elowen-api` and `elowen-ui` without compiling on the VPS
+
+If you only need one service, use the narrower helpers:
+
+```powershell
+./elowen-platform/scripts/deploy-api-prebuilt.ps1
+./elowen-platform/scripts/deploy-ui-prebuilt.ps1
+```
+
+If you just need to refresh the VPS UI from a dirty local workspace and do not want to push to GHCR, use the repeatable prebuilt UI helper:
+
+```powershell
+./elowen-platform/scripts/deploy-ui-prebuilt.ps1
+```
+
+That workflow:
+
+1. builds the UI artifact locally
+2. packages a runtime-only UI image locally
+3. streams that image directly to the VPS with `docker load`
+4. retags it as a local VPS image
+5. restarts `elowen-ui` without compiling on the VPS
+
+There is a matching helper for `elowen-api` when you only need the API:
+
+```powershell
+./elowen-platform/scripts/deploy-api-prebuilt.ps1
+```
+
+That workflow:
+
+1. builds the Linux `elowen-api` binary locally inside Docker
+2. packages a runtime-only API image locally
+3. streams that image directly to the VPS with `docker load`
+4. retags it as a local VPS image
+5. restarts `elowen-api` without compiling on the VPS
+
 ## Fast UI dev loop
 
 For UI-only iteration, you can skip the GHCR publish step and build `elowen-ui` directly from the VPS checkout.
@@ -133,7 +232,7 @@ What this does:
 4. Builds only `elowen-ui` from that temporary source tree.
 5. Restarts only the `elowen-ui` service.
 
-Use the normal GHCR-tagged deploy path when you want a reproducible checkpoint shared with others. Use the fast loop when you are iterating on UI fixes and just need the VPS refreshed quickly.
+Use the normal GHCR-tagged deploy path when you want a reproducible checkpoint shared with others. Use the fast loop only when you are intentionally trading VPS CPU for convenience during short-lived UI iteration.
 
 ## Verify the VPS services
 
@@ -211,6 +310,101 @@ elowen-edge --generate-trust-keypair
 
 Use one generated private key as `ELOWEN_ORCHESTRATOR_SIGNING_KEY` on the VPS, and give the matching public key to edges as `ELOWEN_ORCHESTRATOR_PUBLIC_KEY`. Generate a separate keypair per edge device, put its private key in `ELOWEN_EDGE_SIGNING_KEY`, and let the API store the public key during trusted registration.
 
+## Trust inventory
+
+Keep an operator-maintained inventory for every trusted deployment change. At minimum, track:
+
+- orchestrator signer fingerprint currently in production
+- next orchestrator signer fingerprint staged for rotation
+- each trusted `device_id`
+- the current edge public-key fingerprint for each device
+- trust state for each device: trusted, rotated, revoked, or pending follow-up
+- who approved the last trust-changing action and when it happened
+
+Do not treat the inventory as optional notes. It is the rollback map for Slice 34 trust changes.
+
+## Slice 34 trust lifecycle runbooks
+
+### Orchestrator signing key rotation
+
+Use this sequence when replacing `ELOWEN_ORCHESTRATOR_SIGNING_KEY` without breaking trusted enrollment:
+
+1. Generate a new Ed25519 keypair from a trusted workstation and record both old and new public-key fingerprints in the trust inventory.
+2. Distribute the new orchestrator public key to every enrolled edge before changing the VPS signer. During the overlap window, each edge should trust both the current signer and the staged next signer from the rollout bundle.
+3. Deploy `elowen-api` with the Slice 34 rotation configuration so registration challenges can be verified against the old signer during rollback and the new signer during cutover.
+4. From one canary edge, request a trusted registration challenge and confirm it accepts the new signer without treating any unknown signer as valid.
+5. Repeat the challenge and registration check from at least one still-unrotated edge and one already-updated edge. Do not remove the old signer until both classes succeed.
+6. Promote the new signer to the sole active signer only after every edge has consumed the new trust bundle and successful trusted registration has been observed for each active device cohort.
+7. Remove the old signer from the edge trust bundle and the VPS rotation configuration in a separate cleanup deploy. Update the trust inventory immediately after the cleanup succeeds.
+
+Rollback:
+
+- Restore the old orchestrator signer as the active signer on the VPS.
+- Re-publish the prior edge trust bundle so every device trusts the old signer again.
+- Re-run canary trusted registration from one edge before resuming broader dispatch traffic.
+
+Validation:
+
+- A trusted registration challenge succeeds from a canary edge before and after cutover.
+- No edge accepts a signer fingerprint outside the approved overlap set.
+- Device trust state remains visible and unchanged in the UI except for the expected rotation metadata.
+
+### Edge signing key rotation and trusted re-enrollment
+
+Use this sequence when a single device needs a new signing key:
+
+1. Drain or pause new work on the target device so rotation does not start mid-job.
+2. Record the device's current `device_id`, display name, and current edge-key fingerprint from the trust inventory.
+3. Generate a fresh edge trust keypair on that device. Never copy another device's signing key and never reuse the old private key on a second machine.
+4. Keep the same `ELOWEN_DEVICE_ID` and device name, replace only the edge signing key in the local env file, and start the explicit Slice 34 trusted re-enrollment flow. Do not delete the existing device row or manually edit API trust tables.
+5. Confirm the API records the replacement as a rotation or re-enrollment for the same device identity instead of a new anonymous device.
+6. Verify the UI shows the updated trust state and the new edge-key fingerprint, then remove the retired fingerprint from the active inventory and mark it as superseded.
+
+Rollback:
+
+- Restore the prior edge signing key on the same device.
+- Re-run trusted registration for the same `device_id`.
+- Confirm the API and UI return to the last known-good trust state before retrying the rotation.
+
+Validation:
+
+- The rotated device re-registers successfully with its original `device_id`.
+- Manual dispatch to that device still works after re-enrollment.
+- The old edge key can no longer be used as the active key after the new key is accepted.
+
+### Revocation handling
+
+Use revocation when a signer or device should stop being trusted immediately:
+
+1. Record the incident reason, affected fingerprints, affected `device_id`, and the operator approving the change.
+2. Revoke the trust material through the Slice 34 API or operator UI path. Do not approximate revocation by deleting the device row.
+3. Verify that new registrations and re-enrollment attempts using the revoked trust material are rejected.
+4. Confirm the device trust state is visible as revoked in the UI and any operator notes or incident references are attached in the inventory.
+5. If the device is being recovered rather than retired, generate a new edge keypair and use the explicit re-enrollment flow only after revocation has been confirmed.
+
+Validation:
+
+- Registration attempts using revoked trust material fail deterministically.
+- Operators can distinguish revoked trust from an ordinary offline device.
+- The inventory contains the revocation timestamp and replacement plan, if any.
+
+### Additional trusted edge enrollment
+
+Use this sequence for second and third devices:
+
+1. Assign a unique `ELOWEN_DEVICE_ID`, human-readable device name, and dedicated edge signing keypair to the new machine before first startup.
+2. Create a separate env file per device. Never clone an existing machine's `ELOWEN_EDGE_SIGNING_KEY`.
+3. Populate the orchestrator trust bundle used for the current rollout window, including any staged signer needed for an active orchestrator rotation.
+4. Start the edge and complete first-time trusted enrollment for that specific device.
+5. Verify the UI shows a distinct device record, the correct repository inventory, and the expected trust state for the new edge.
+6. Only after the new device is visible and healthy should you enable it for operator dispatch selection.
+
+Validation:
+
+- The new edge appears as a separate trusted device rather than replacing an existing one.
+- Existing trusted devices keep their identity and trust state.
+- Repository and branch choices remain attributable to the correct device in the UI.
+
 ## Slice 12 validation checklist
 
 1. Deploy the VPS stack successfully.
@@ -221,6 +415,15 @@ Use one generated private key as `ELOWEN_ORCHESTRATOR_SIGNING_KEY` on the VPS, a
 6. Confirm the device appears in the UI or API.
 7. Create a job from the remote UI.
 8. Confirm the job is dispatched to the laptop and job events appear in the remote UI.
+
+## Slice 34 validation checklist
+
+1. Perform a canary trusted registration from one active edge and capture the signer fingerprint it accepted.
+2. Rotate the orchestrator signer using the overlap procedure and confirm trusted registration still works from a canary edge before and after cutover.
+3. Rotate one edge signing key through the explicit re-enrollment path and confirm the device keeps the same identity.
+4. Revoke one retired or test trust credential and confirm registration with that credential is rejected.
+5. Enroll an additional edge with its own `device_id` and signing key and confirm it appears as a separate trusted device in the UI.
+6. Confirm operators can distinguish trusted, rotated, and revoked states during manual UI review.
 
 ## Slice 29 realtime recovery checklist
 
@@ -236,5 +439,5 @@ Use one generated private key as `ELOWEN_ORCHESTRATOR_SIGNING_KEY` on the VPS, a
 - `nats` is intentionally not exposed on a public interface in this Slice 12 path.
 - If the laptop disconnects, job dispatch will stall after probing or dispatch.
 - `caddy` stores ACME state in the `caddy-data` volume.
-- Rust and WASM builds should happen in GitHub Actions, not on the VPS.
+- Rust and WASM builds should happen in GitHub Actions or on a developer workstation, not on the VPS.
 - The current deployment is still single-node and local-first in spirit. It is enough to prove the remote split, not to claim production hardening.

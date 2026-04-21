@@ -50,6 +50,9 @@
 - If `cargo check` fails on Windows with linker errors, load `vcvars64.bat` before running Rust commands.
 - If note promotion fails, check `elowen-notes` logs first and verify ArangoDB is reachable on the configured URL.
 - If conversational replies stop working, inspect `elowen-api` logs and verify `OPENAI_API_KEY`, `ELOWEN_ASSISTANT_MODEL`, and `ELOWEN_ASSISTANT_BASE_URL`.
+- If trusted edge registration fails, compare the orchestrator signer fingerprint the edge accepted with the signer the API is advertising, then verify the device trust record is not revoked.
+- If an orchestrator rotation rollout stalls, keep the old signer trusted until every edge has fetched and validated the new trust bundle, then remove the old signer in a separate cleanup deploy.
+- If an edge key replacement is rejected, confirm the device kept the same `ELOWEN_DEVICE_ID`, used the explicit re-enrollment path, and did not attempt a manual database cleanup instead of the API trust workflow.
 - If dispatch stalls at probing or dispatched, inspect:
   - `elowen-edge` logs
   - `elowen.jobs.dispatch.{device_id}`
