@@ -1,6 +1,6 @@
 # Laptop Edge
 
-This runbook is the Slice 13 path for running `elowen-edge` as a repeatable standalone laptop process instead of an ad hoc terminal command.
+This runbook describes the Slice 35 service-grade Windows path for running `elowen-edge` as a durable laptop runtime instead of an ad hoc terminal command.
 
 ## Scope
 
@@ -9,7 +9,8 @@ This document covers:
 - preparing a laptop checkout to run `elowen-edge` against a remote orchestrator
 - storing the edge configuration in a local env file
 - starting the SSH tunnel and edge through a checked-in wrapper script
-- optionally installing a per-user logon launcher on Windows
+- installing the preferred non-interactive Scheduled Task host model on Windows
+- falling back to a per-user Startup-folder launcher only when the scheduled-task path is unavailable
 - validating device registration and remote job dispatch
 - operating the Slice 34 edge-side trust lifecycle for rotation, revocation response, and multi-edge enrollment
 
@@ -29,9 +30,9 @@ This document does not cover:
 ## Files
 
 - Env template: [edge.env.example](D:/Projects/elowen/elowen-edge/edge.env.example)
-- Foreground and detached launcher: [Start-ElowenEdge.ps1](D:/Projects/elowen/elowen-edge/scripts/windows/Start-ElowenEdge.ps1)
-- Startup-folder installer: [Install-ElowenEdgeStartup.ps1](D:/Projects/elowen/elowen-edge/scripts/windows/Install-ElowenEdgeStartup.ps1)
-- Optional Task Scheduler installer: [Register-ElowenEdgeTask.ps1](D:/Projects/elowen/elowen-edge/scripts/windows/Register-ElowenEdgeTask.ps1)
+- Wrapper for foreground, detached, and supervised runtime modes: [Start-ElowenEdge.ps1](D:/Projects/elowen/elowen-edge/scripts/windows/Start-ElowenEdge.ps1)
+- Preferred Scheduled Task installer: [Register-ElowenEdgeTask.ps1](D:/Projects/elowen/elowen-edge/scripts/windows/Register-ElowenEdgeTask.ps1)
+- Startup-folder fallback installer: [Install-ElowenEdgeStartup.ps1](D:/Projects/elowen/elowen-edge/scripts/windows/Install-ElowenEdgeStartup.ps1)
 
 ## Prepare the local config
 
@@ -129,22 +130,11 @@ This leaves both the tunnel and edge running in the background:
   -Detach
 ```
 
-## Install a startup launcher on Windows
+## Install the preferred Scheduled Task host model
 
-This creates a per-user Startup-folder launcher that runs the same wrapper at logon without requiring a scheduled task:
-
-```powershell
-.\elowen-edge\scripts\windows\Install-ElowenEdgeStartup.ps1 `
-  -StartupName ElowenEdge `
-  -EnvFile .\elowen-edge\edge.env.local `
-  -TunnelUser <vps-user> `
-  -TunnelHost <PUBLIC_HOSTNAME> `
-  -Release
-```
-
-## Optional Task Scheduler path
-
-If you prefer Task Scheduler and the laptop policy allows it, use:
+This is the primary recommended production path on Windows. The installer creates a
+scheduled task that starts at system startup, runs with `S4U` logon semantics by default,
+and keeps the tunnel plus edge pair under wrapper supervision:
 
 ```powershell
 .\elowen-edge\scripts\windows\Register-ElowenEdgeTask.ps1 `
@@ -155,13 +145,46 @@ If you prefer Task Scheduler and the laptop policy allows it, use:
   -Release
 ```
 
+Useful optional parameters:
+
+- `-Trigger Startup` keeps the edge off the interactive logon path and is the default.
+- `-LogonType S4U` is the default non-interactive principal model for the current user.
+- `-LogDirectory <path>` stores wrapper-managed tunnel and edge stdout/stderr logs outside the repo if you want a fixed operator log location.
+- `-RequireServiceGrade` fails the install instead of falling back when the host denies the preferred `Startup + S4U` task model.
+
+Use `Start-ScheduledTask -TaskName ElowenEdge` to trigger the task immediately after installation.
+
+If the current host or session denies registration of the preferred `Startup + S4U` task,
+the installer now falls back to a per-user `LogOn + Interactive` scheduled task by default
+and prints the effective mode it installed. Treat that fallback as operationally weaker than
+the primary service-grade path because it still depends on user logon.
+
+## Startup-folder fallback
+
+If Task Scheduler is blocked by local policy or the machine cannot support the preferred
+scheduled-task model, fall back to the Startup-folder launcher:
+
+```powershell
+.\elowen-edge\scripts\windows\Install-ElowenEdgeStartup.ps1 `
+  -StartupName ElowenEdge `
+  -EnvFile .\elowen-edge\edge.env.local `
+  -TunnelUser <vps-user> `
+  -TunnelHost <PUBLIC_HOSTNAME> `
+  -Release
+```
+
+Treat this as a fallback path for constrained hosts rather than the default recommended
+production installation.
+
 ## Validation checklist
 
-1. Start the laptop edge with the wrapper.
+1. Install the Scheduled Task host model and start it with `Start-ScheduledTask -TaskName ElowenEdge`.
 2. Confirm the device appears in the remote UI or `GET /api/v1/devices`.
 3. Create a manual job from the remote UI.
 4. Confirm the job is dispatched to the laptop and job events return to the orchestrator.
-5. Stop and restart the wrapper to confirm the config file is sufficient without rebuilding the command manually.
+5. Restart the task or reboot the machine and confirm the edge returns without an interactive logon.
+6. Stop either the tunnel or edge process and confirm the wrapper/task restart path returns the laptop to service.
+7. If the installer fell back to `LogOn + Interactive`, record that result as a host-policy limitation rather than a service-grade pass.
 
 ## Slice 34 trust lifecycle procedures
 
@@ -178,7 +201,7 @@ If you prefer Task Scheduler and the laptop policy allows it, use:
 2. Choose a new `ELOWEN_DEVICE_ID` and a unique display name for the additional machine.
 3. Generate a new edge signing keypair on that machine.
 4. Use the current orchestrator trust bundle from the rollout plan, including any staged signer needed during an orchestrator rotation window.
-5. Start the wrapper and confirm the UI shows a new device record instead of changing an existing one.
+5. Start the scheduled task or wrapper and confirm the UI shows a new device record instead of changing an existing one.
 
 ### Edge signing key rotation and re-enrollment
 
@@ -187,7 +210,7 @@ If you prefer Task Scheduler and the laptop policy allows it, use:
 3. Keep the existing `ELOWEN_DEVICE_ID` and device name unchanged.
 4. Replace only `ELOWEN_EDGE_SIGNING_KEY` in the env file, then run the supported Slice 34 re-enrollment flow.
 5. Confirm the API and UI still show the same device identity, with trust state updated to reflect the completed rotation.
-6. Resume normal edge startup only after the trust state is correct.
+6. Resume normal scheduled startup only after the trust state is correct.
 
 Rollback:
 
@@ -199,7 +222,7 @@ Rollback:
 
 1. Receive the updated orchestrator trust bundle before the VPS signer changes.
 2. Update `ELOWEN_ORCHESTRATOR_PUBLIC_KEY` or the device's equivalent trust-bundle setting with the approved overlap set.
-3. Restart the edge if required by the runtime packaging on that machine.
+3. Restart the scheduled task or wrapper if required by the runtime packaging on that machine.
 4. Request a fresh trusted registration challenge and confirm the edge accepts only the staged signer set.
 5. After the platform rollout finishes, remove the retired signer from the local trust bundle.
 
@@ -215,5 +238,5 @@ Rollback:
 - The wrapper assumes NATS remains private on the VPS and is reached through SSH local port forwarding.
 - `edge.env.local` should stay out of git.
 - The Windows install helpers are Windows-specific because this is the current laptop host environment. The env-file support in `elowen-edge` itself is cross-platform.
-- Task Scheduler may still be blocked by local policy on some machines. The Startup-folder launcher is the lower-friction default.
+- Task Scheduler may still be blocked by local policy on some machines. In that case, use the Startup-folder launcher as a fallback rather than the primary recommendation.
 - Trust rotation work is safest when done during a planned maintenance window because a mistrusted edge will stop registering until the trust mismatch is corrected.
