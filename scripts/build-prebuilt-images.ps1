@@ -60,10 +60,10 @@ if ($buildUi -and [string]::IsNullOrWhiteSpace($UiTag)) {
 
 if ($buildApi) {
     $apiBuildDir = Join-Path $apiRoot "build"
-    $apiBinary = Join-Path $apiRoot "target\release\elowen-api"
     $apiOutput = Join-Path $apiBuildDir "elowen-api"
     $apiImage = "$Registry/elowen-api:$ApiTag"
     $cargoTargetDir = "/src/target"
+    New-Item -ItemType Directory -Force -Path $apiBuildDir | Out-Null
 
     Invoke-CheckedCommand `
         -Message "Building elowen-api Linux release binary locally" `
@@ -77,7 +77,6 @@ if ($buildApi) {
             "bash", "-lc", "export PATH=/usr/local/cargo/bin:`$PATH && rm -rf /tmp/elowen-api-build && mkdir -p /tmp/elowen-api-build && cp -R /src/. /tmp/elowen-api-build && find /tmp/elowen-api-build/migrations -type f -name '*.sql' -exec sed -i 's/\r$//' {} + && cd /tmp/elowen-api-build && cargo build --release && cp /src/target/release/elowen-api /src/build/elowen-api"
         )
 
-    New-Item -ItemType Directory -Force -Path $apiBuildDir | Out-Null
     if (-not (Test-Path $apiOutput)) {
         throw "Expected API binary at '$apiOutput' after cargo build."
     }

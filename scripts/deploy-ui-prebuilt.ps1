@@ -37,10 +37,6 @@ $remoteScript = @"
 set -eu
 docker tag '$sourceImage' '$remoteImage'
 cd '$WorkspaceRoot'
-docker compose \
-  --env-file elowen-platform/env/.env.vps \
-  -f elowen-platform/compose/docker-compose.vps.yml \
-  up -d --pull never elowen-api
 ELOWEN_UI_IMAGE=elowen-ui ELOWEN_UI_TAG='$UiTag' docker compose \
   --env-file elowen-platform/env/.env.vps \
   -f elowen-platform/compose/docker-compose.vps.yml \
