@@ -16,6 +16,7 @@ Shared platform repository for deployment topology, environment examples, contra
 
 - `compose/` - local and VPS Compose stacks
 - `contracts/` - shared protobuf definitions
+  `contracts/rust/elowen-contracts/` - shared internal Rust API-edge message contracts
 - `db/` - schema drafts and database notes
 - `docs/` - operational documentation
 - `env/` - example environment files
