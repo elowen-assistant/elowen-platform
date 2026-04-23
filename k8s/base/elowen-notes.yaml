@@ -26,7 +26,8 @@ spec:
     spec:
       containers:
         - name: elowen-notes
-          image: ghcr.io/elowen-assistant/elowen-notes:latest
+          image: ghcr.io/elowen-assistant/elowen-notes:main
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
           envFrom:

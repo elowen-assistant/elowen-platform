@@ -26,6 +26,7 @@ spec:
     spec:
       containers:
         - name: elowen-ui
-          image: ghcr.io/elowen-assistant/elowen-ui:latest
+          image: ghcr.io/elowen-assistant/elowen-ui:main
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 3000
