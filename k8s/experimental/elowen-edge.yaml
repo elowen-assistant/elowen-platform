@@ -14,7 +14,8 @@ spec:
     spec:
       containers:
         - name: elowen-edge
-          image: ghcr.io/elowen-assistant/elowen-edge:latest
+          image: ghcr.io/elowen-assistant/elowen-edge:main
+          imagePullPolicy: IfNotPresent
           envFrom:
             - configMapRef:
                 name: elowen-config

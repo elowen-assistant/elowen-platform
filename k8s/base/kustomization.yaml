@@ -11,4 +11,10 @@ resources:
   - elowen-api.yaml
   - elowen-notes.yaml
   - elowen-ui.yaml
-  - elowen-edge.yaml
+images:
+  - name: ghcr.io/elowen-assistant/elowen-api
+    newTag: main
+  - name: ghcr.io/elowen-assistant/elowen-ui
+    newTag: main
+  - name: ghcr.io/elowen-assistant/elowen-notes
+    newTag: main

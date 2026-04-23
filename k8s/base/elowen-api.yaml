@@ -26,15 +26,54 @@ spec:
     spec:
       containers:
         - name: elowen-api
-          image: ghcr.io/elowen-assistant/elowen-api:latest
+          image: ghcr.io/elowen-assistant/elowen-api:main
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
           envFrom:
             - configMapRef:
                 name: elowen-config
+          env:
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: elowen-secrets
+                  key: OPENAI_API_KEY
+            - name: ELOWEN_UI_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: elowen-secrets
+                  key: ELOWEN_UI_PASSWORD
+            - name: ELOWEN_ORCHESTRATOR_SIGNING_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: elowen-secrets
+                  key: ELOWEN_ORCHESTRATOR_SIGNING_KEY
+                  optional: true
+            - name: ELOWEN_ORCHESTRATOR_SIGNING_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: elowen-secrets
+                  key: ELOWEN_ORCHESTRATOR_SIGNING_KEYS
+                  optional: true
+            - name: ELOWEN_REVOKED_EDGE_PUBLIC_KEYS
+              valueFrom:
+                secretKeyRef:
+                  name: elowen-secrets
+                  key: ELOWEN_REVOKED_EDGE_PUBLIC_KEYS
+                  optional: true
+          volumeMounts:
+            - name: ui-auth-config
+              mountPath: /run/elowen-env
+              readOnly: true
           readinessProbe:
             httpGet:
               path: /health
               port: 8080
             initialDelaySeconds: 5
             periodSeconds: 10
+      volumes:
+        - name: ui-auth-config
+          secret:
+            secretName: elowen-ui-auth-config
+            optional: true
