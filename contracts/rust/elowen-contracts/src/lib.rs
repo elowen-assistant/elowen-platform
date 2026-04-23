@@ -22,6 +22,25 @@ impl ExecutionIntent {
     }
 }
 
+/// Specialization for a dispatched job target.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum JobTargetKind {
+    #[default]
+    Repository,
+    Capability,
+}
+
+impl JobTargetKind {
+    /// Returns the stable wire label used in prompts, summaries, and reports.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Repository => "repository",
+            Self::Capability => "capability",
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub struct DeviceRepository {
     pub name: String,
@@ -136,12 +155,21 @@ pub struct JobDispatchMessage {
     pub thread_id: String,
     pub title: String,
     pub device_id: String,
-    pub repo_name: String,
-    pub base_branch: String,
-    pub branch_name: String,
-    pub request_text: String,
+    #[serde(default)]
+    pub target_kind: JobTargetKind,
+    pub target_name: String,
+    pub base_branch: Option<String>,
+    pub branch_name: Option<String>,
+    #[serde(alias = "request_text")]
+    pub prompt: String,
     pub execution_intent: ExecutionIntent,
     pub dispatched_at: DateTime<Utc>,
+}
+
+impl JobDispatchMessage {
+    pub fn target_name(&self) -> &str {
+        self.target_name.trim()
+    }
 }
 
 /// Lifecycle event emitted by the edge back to the orchestrator.
@@ -168,17 +196,25 @@ pub struct JobApprovalCommand {
     pub short_id: String,
     pub correlation_id: String,
     pub device_id: String,
-    pub repo_name: String,
-    pub branch_name: String,
+    #[serde(default)]
+    pub target_kind: JobTargetKind,
+    pub target_name: Option<String>,
+    pub branch_name: Option<String>,
     pub action_type: String,
     pub approved_at: DateTime<Utc>,
+}
+
+impl JobApprovalCommand {
+    pub fn target_name(&self) -> &str {
+        self.target_name.as_deref().unwrap_or("unspecified")
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::{
-        DeviceRegistrationTrustProof, OrchestratorTrustSigner, RegistrationChallengeResponse,
-        RegistrationTrustIntent,
+        DeviceRegistrationTrustProof, JobDispatchMessage, JobTargetKind, OrchestratorTrustSigner,
+        RegistrationChallengeResponse, RegistrationTrustIntent,
     };
     use chrono::Utc;
 
@@ -243,5 +279,30 @@ mod tests {
 
         let json = serde_json::to_value(&challenge).expect("challenge should serialize");
         assert_eq!(json["trusted_signers"].as_array().map(Vec::len), Some(1));
+    }
+
+    #[test]
+    fn repository_dispatch_defaults_target_kind_for_older_payloads() {
+        let payload = serde_json::json!({
+            "job_id": "job-1",
+            "short_id": "job1",
+            "correlation_id": "corr-1",
+            "thread_id": "thread-1",
+            "title": "Review repo",
+            "device_id": "device-1",
+            "target_name": "elowen-api",
+            "base_branch": "main",
+            "branch_name": "codex/job-1-review-repo",
+            "request_text": "Review the repo",
+            "execution_intent": "read_only",
+            "dispatched_at": Utc::now()
+        });
+
+        let decoded: JobDispatchMessage =
+            serde_json::from_value(payload).expect("dispatch should deserialize");
+
+        assert_eq!(decoded.target_kind, JobTargetKind::Repository);
+        assert_eq!(decoded.target_name(), "elowen-api");
+        assert_eq!(decoded.prompt, "Review the repo");
     }
 }

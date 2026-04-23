@@ -39,6 +39,12 @@ enum FailureClass {
   FAILURE_CLASS_SANDBOX = 7;
 }
 
+enum JobTargetKind {
+  JOB_TARGET_KIND_UNSPECIFIED = 0;
+  JOB_TARGET_KIND_REPOSITORY = 1;
+  JOB_TARGET_KIND_CAPABILITY = 2;
+}
+
 message Job {
   string id = 1;
   string short_id = 2;
@@ -55,6 +61,8 @@ message Job {
   string parent_job_id = 13;
   google.protobuf.Timestamp created_at = 14;
   google.protobuf.Timestamp updated_at = 15;
+  JobTargetKind target_kind = 16;
+  string capability_name = 17;
 }
 
 message JobEventRecord {
@@ -81,6 +89,8 @@ message CreateJobRequest {
   string base_branch = 3;
   string request_text = 4;
   string device_id = 5;
+  JobTargetKind target_kind = 6;
+  string capability_name = 7;
 }
 
 message JobLifecycleEvent {
@@ -107,6 +117,8 @@ message JobDispatch {
   string branch_name = 7;
   string request_text = 8;
   repeated string context_summary_ids = 9;
+  JobTargetKind target_kind = 10;
+  string capability_name = 11;
 }
 
 message JobAccepted {

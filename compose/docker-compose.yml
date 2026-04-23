@@ -43,7 +43,8 @@ services:
 
   elowen-api:
     build:
-      context: ../../elowen-api
+      context: ../../
+      dockerfile: elowen-api/Dockerfile
     container_name: elowen-api
     restart: unless-stopped
     depends_on:
@@ -84,7 +85,8 @@ services:
 
   elowen-edge:
     build:
-      context: ../../elowen-edge
+      context: ../../
+      dockerfile: elowen-edge/Dockerfile
     container_name: elowen-edge
     restart: unless-stopped
     depends_on:
@@ -101,12 +103,12 @@ services:
       ELOWEN_DEVICE_NAME: Elowen Primary Workspace
       ELOWEN_DEVICE_PRIMARY: "true"
       ELOWEN_ALLOWED_REPOS: elowen-api,elowen-ui,elowen-edge,elowen-notes,elowen-platform
-      ELOWEN_DEVICE_CAPABILITIES: codex,git,build,test
-      ELOWEN_EDGE_WORKSPACE_ROOT: /workspace
-      ELOWEN_EDGE_WORKTREE_ROOT: /workspace/.elowen/worktrees
+      ELOWEN_DEVICE_CAPABILITIES: codex,git,build,test,generic_jobs
+      ELOWEN_EDGE_WORKSPACE_ROOT: /repo-root/.elowen/worktrees/elowen-workspace/slice-38-tools-and-integration-expansion
+      ELOWEN_EDGE_WORKTREE_ROOT: /repo-root/.elowen/worktrees/elowen-workspace/slice-38-tools-and-integration-expansion/.elowen/worktrees
       ELOWEN_SIMULATED_RUN_MS: 1500
     volumes:
-      - ../../:/workspace
+      - ../../../../../..:/repo-root
 
   elowen-notes:
     build:
