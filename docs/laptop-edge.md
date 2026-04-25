@@ -195,9 +195,10 @@ Use `-Location StartMenu` if you prefer a Start Menu shortcut instead of a Deskt
 
 - Keep one TOML config and one secret directory per device.
 - Do not reuse a device id or private edge signing key on another machine.
-- During edge key rotation, keep the same `[device].id`, set `[trust].previous_edge_signing_key_path` only for the re-enrollment window, and remove it after the API confirms the new key.
+- During edge key rotation, keep the same `[device].id`, set `[trust].previous_edge_signing_key_path` only for the re-enrollment window, and remove it after the orchestrator admin UI confirms the rotated key.
 - During orchestrator signer rotation, update `orchestrator-trust.json` with the approved overlap set before the API signer changes.
 - If a device is revoked, stop the edge and do not keep retrying registration blindly.
+- The TUI Diagnostics view reports structured trust failures when the API returns them. A revoked device/key means the orchestrator admin must clear revocation or re-enroll fresh material; a retired or unknown signer means the local `orchestrator-trust.json` is stale; a previous-key mismatch means the rotation window needs the prior edge key path restored.
 
 ## Operational Notes
 
