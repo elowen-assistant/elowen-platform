@@ -332,20 +332,27 @@ Keep an operator-maintained inventory for every trusted deployment change. At mi
 - trust state for each device: trusted, rotated, revoked, or pending follow-up
 - who approved the last trust-changing action and when it happened
 
-Do not treat the inventory as optional notes. It is the rollback map for Slice 34 trust changes.
+Do not treat the inventory as optional notes. It is the rollback map for trust lifecycle changes.
 
-## Slice 34 trust lifecycle runbooks
+## Trust lifecycle runbooks
+
+Slice 42 makes the orchestrator the authoritative trust lifecycle owner. Private
+orchestrator signing keys still come from deployment configuration, but public
+signer state, device trust state, and admin actions are visible through the API
+and admin UI. Treat the device trust projection as the dispatch gate: `trusted`
+devices may receive jobs, while `rotated`, `revoked`, `untrusted`, and
+`needs_attention` devices stay blocked until an admin resolves them.
 
 ### Orchestrator signing key rotation
 
 Use this sequence when replacing `ELOWEN_ORCHESTRATOR_SIGNING_KEY` without breaking trusted enrollment:
 
 1. Generate a new Ed25519 keypair from a trusted workstation and record both old and new public-key fingerprints in the trust inventory.
-2. Distribute the new orchestrator public key to every enrolled edge before changing the VPS signer. During the overlap window, each edge should trust both the current signer and the staged next signer from the rollout bundle.
-3. Deploy `elowen-api` with the Slice 34 rotation configuration so registration challenges can be verified against the old signer during rollback and the new signer during cutover.
+2. Add the new private key to `ELOWEN_ORCHESTRATOR_SIGNING_KEYS`, deploy `elowen-api`, and mark the new public signer `staged` in the admin UI.
+3. Distribute the new orchestrator public key to every enrolled edge before activation. During the overlap window, each edge should trust both the current signer and the staged next signer from the rollout bundle.
 4. From one canary edge, request a trusted registration challenge and confirm it accepts the new signer without treating any unknown signer as valid.
 5. Repeat the challenge and registration check from at least one still-unrotated edge and one already-updated edge. Do not remove the old signer until both classes succeed.
-6. Promote the new signer to the sole active signer only after every edge has consumed the new trust bundle and successful trusted registration has been observed for each active device cohort.
+6. Promote the new signer to active in the admin UI only after every edge has consumed the new trust bundle and successful trusted registration has been observed for each active device cohort.
 7. Remove the old signer from the edge trust bundle and the VPS rotation configuration in a separate cleanup deploy. Update the trust inventory immediately after the cleanup succeeds.
 
 Rollback:
@@ -367,9 +374,10 @@ Use this sequence when a single device needs a new signing key:
 1. Drain or pause new work on the target device so rotation does not start mid-job.
 2. Record the device's current `device_id`, display name, and current edge-key fingerprint from the trust inventory.
 3. Generate a fresh edge trust keypair on that device. Never copy another device's signing key and never reuse the old private key on a second machine.
-4. Keep the same `[device].id` and device name, replace only the secret file referenced by `[trust].edge_signing_key_path`, temporarily set `[trust].previous_edge_signing_key_path`, and start the explicit Slice 34 trusted re-enrollment flow. Do not delete the existing device row or manually edit API trust tables.
+4. Keep the same `[device].id` and device name, replace only the secret file referenced by `[trust].edge_signing_key_path`, temporarily set `[trust].previous_edge_signing_key_path`, and start the trusted re-enrollment flow. Do not delete the existing device row or manually edit API trust tables.
 5. Confirm the API records the replacement as a rotation or re-enrollment for the same device identity instead of a new anonymous device.
-6. Verify the UI shows the updated trust state and the new edge-key fingerprint, then remove the retired fingerprint from the active inventory and mark it as superseded.
+6. Confirm the rotation in the orchestrator admin UI after verifying the new fingerprint. Dispatch remains blocked while the device is `rotated`.
+7. Verify the UI shows the device as trusted again, then remove the retired fingerprint from the active inventory and mark it as superseded.
 
 Rollback:
 
@@ -380,7 +388,7 @@ Rollback:
 Validation:
 
 - The rotated device re-registers successfully with its original `[device].id`.
-- Manual dispatch to that device still works after re-enrollment.
+- Manual dispatch to that device is blocked while rotated and works only after admin confirmation.
 - The old edge key can no longer be used as the active key after the new key is accepted.
 
 ### Revocation handling
@@ -388,10 +396,10 @@ Validation:
 Use revocation when a signer or device should stop being trusted immediately:
 
 1. Record the incident reason, affected fingerprints, affected `device_id`, and the operator approving the change.
-2. Revoke the trust material through the Slice 34 API or operator UI path. Do not approximate revocation by deleting the device row.
+2. Revoke the trust material through the admin UI or API. Do not approximate revocation by deleting the device row.
 3. Verify that new registrations and re-enrollment attempts using the revoked trust material are rejected.
 4. Confirm the device trust state is visible as revoked in the UI and any operator notes or incident references are attached in the inventory.
-5. If the device is being recovered rather than retired, generate a new edge keypair and use the explicit re-enrollment flow only after revocation has been confirmed.
+5. If the device is being recovered rather than retired, generate a new edge keypair and clear revocation only after the replacement material is ready.
 
 Validation:
 
