@@ -1,0 +1,32 @@
+[orchestrator]
+api_url = "http://elowen-api:8080"
+nats_url = "nats://nats:4222"
+
+[device]
+id = "elowen-primary"
+name = "Elowen Primary Workspace"
+primary = true
+capabilities = ["codex", "git", "build", "test", "generic_jobs"]
+
+[repositories]
+workspace_root = "/repo-root/.elowen/worktrees/elowen-workspace/slice-38-tools-and-integration-expansion"
+worktree_root = "/repo-root/.elowen/worktrees/elowen-workspace/slice-38-tools-and-integration-expansion/.elowen/worktrees"
+allowed_repos = ["elowen-api", "elowen-ui", "elowen-edge", "elowen-notes", "elowen-platform"]
+
+[runtime]
+state_dir = "/tmp/elowen-edge-state"
+log_format = "json"
+rust_log = "info"
+
+[runner]
+simulated_run_ms = 1500
+validation_timeout_secs = 600
+sandbox_mode = "workspace"
+
+[trust]
+
+[service]
+name = "elowen-edge"
+
+[tunnel]
+enabled = false

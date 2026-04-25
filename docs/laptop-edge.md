@@ -1,242 +1,206 @@
-# Laptop Edge
+# Edge Client Runtime
 
-This runbook describes the Slice 35 service-grade Windows path for running `elowen-edge` as a durable laptop runtime instead of an ad hoc terminal command.
+This runbook describes the Slice 41 operator path for running `elowen-edge` as a durable Windows or Linux edge runtime with TOML configuration, separate secret files, a local TUI, and service-manager integration.
 
 ## Scope
 
 This document covers:
 
-- preparing a laptop checkout to run `elowen-edge` against a remote orchestrator
-- storing the edge configuration in a local env file
-- starting the SSH tunnel and edge through a checked-in wrapper script
-- installing the preferred non-interactive Scheduled Task host model on Windows
-- falling back to a per-user Startup-folder launcher only when the scheduled-task path is unavailable
-- validating device registration and remote job dispatch
-- operating the Slice 34 edge-side trust lifecycle for rotation, revocation response, and multi-edge enrollment
+- preparing a Windows laptop or Linux/VPS host to run `elowen-edge`
+- migrating one legacy env file into TOML
+- storing private edge trust material in permission-checked local secret files
+- using the TUI for setup, diagnostics, and service control
+- installing persistent service startup through Windows Task Scheduler or Linux systemd
+- validating device registration and remote dispatch
 
-This document does not cover:
-
-- exposing NATS publicly
-- chat-to-job automation
-- in-thread completion replies
-
-## Prerequisites
-
-- a deployed VPS orchestrator from [vps-deployment.md](D:/Projects/elowen/elowen-platform/docs/vps-deployment.md)
-- a laptop checkout that includes [elowen-edge](D:/Projects/elowen/elowen-edge/README.md)
-- Rust installed locally if you plan to build the edge binary from source
-- `ssh.exe` available on the laptop
+It does not cover exposing NATS publicly. The usual remote-laptop topology still reaches private NATS through an SSH tunnel unless the host is colocated with the orchestrator network.
 
 ## Files
 
-- Env template: [edge.env.example](D:/Projects/elowen/elowen-edge/edge.env.example)
-- Wrapper for foreground, detached, and supervised runtime modes: [Start-ElowenEdge.ps1](D:/Projects/elowen/elowen-edge/scripts/windows/Start-ElowenEdge.ps1)
-- Preferred Scheduled Task installer: [Register-ElowenEdgeTask.ps1](D:/Projects/elowen/elowen-edge/scripts/windows/Register-ElowenEdgeTask.ps1)
-- Startup-folder fallback installer: [Install-ElowenEdgeStartup.ps1](D:/Projects/elowen/elowen-edge/scripts/windows/Install-ElowenEdgeStartup.ps1)
+- TOML template: [edge.toml.example](D:/Projects/elowen/elowen-edge/edge.toml.example)
+- Edge runtime and TUI: [elowen-edge](D:/Projects/elowen/elowen-edge/README.md)
+- Windows fallback helpers: [scripts/windows](D:/Projects/elowen/elowen-edge/scripts/windows)
 
-## Prepare the local config
+## Prepare The Config
 
-1. Build the edge binary from the repo root:
+Build or download the `elowen-edge` executable, then create a local config:
 
 ```powershell
 cargo build --release --manifest-path .\elowen-edge\Cargo.toml
+Copy-Item .\elowen-edge\edge.toml.example .\elowen-edge\edge.toml
+New-Item -ItemType Directory .\elowen-edge\secrets -Force
 ```
 
-2. Copy the env template:
+Generate per-device trust material:
 
 ```powershell
-Copy-Item .\elowen-edge\edge.env.example .\elowen-edge\edge.env.local
+.\elowen-edge\target\release\elowen-edge.exe trust generate-keypair
 ```
 
-3. Edit `edge.env.local` so the values match the laptop checkout and target VPS.
+Store the edge private key in `secrets\edge-signing-key.txt`. Store the orchestrator trust bundle in `secrets\orchestrator-trust.json`:
+
+```json
+[
+  { "key_id": "current", "public_key": "<base64url-public-key>" }
+]
+```
+
+On Linux, restrict the secret files to the service user before startup:
+
+```bash
+chmod 600 /etc/elowen/secrets/*
+```
+
+## Install On Windows
+
+The normal Windows flow is to download and run the unsigned Inno Setup installer. Release packaging produces it with:
+
+```powershell
+.\elowen-edge\scripts\windows\New-ElowenEdgeInnoInstaller.ps1 -Release
+```
+
+Build hosts need Inno Setup 6:
+
+```powershell
+winget install --id JRSoftware.InnoSetup -e
+```
+
+The generated `dist\ElowenEdgeSetup.exe` installs the edge binary, helper scripts, TOML config, optional local secret files, scheduled task, Windows uninstall entry, and TUI shortcuts. For unattended UAT with an existing config and secret directory:
+
+```powershell
+.\elowen-edge\dist\ElowenEdgeSetup.exe `
+  /CURRENTUSER `
+  /CONFIGSOURCE="$PWD\elowen-edge\edge.toml" `
+  /SECRETSOURCEDIR="$PWD\elowen-edge\secrets"
+```
+
+The installed scheduled task currently starts without an installer-managed tunnel. Use the TUI after installation if a tunnel-backed service configuration is needed. The older `Install-ElowenEdge.ps1` bootstrap installer remains available for debugging the lower-level install logic.
+
+## Configure With The TUI
+
+Open the TUI:
+
+```powershell
+.\elowen-edge\target\release\elowen-edge.exe tui --config .\elowen-edge\edge.toml
+```
+
+Use the first-run checklist to confirm:
+
+- orchestrator API URL and NATS URL
+- stable device id and display name
+- repository roots, hidden repos, and explicit repo overlays
+- Codex command and extra args
+- trust bundle path and edge signing-key path
+- service install state
+
+Detailed edits happen in `edge.toml`; press `Shift+R` in the TUI to reload validation after editing.
+
+## TOML Fields
 
 Expected baseline values:
 
-- `ELOWEN_API_URL=https://<PUBLIC_HOSTNAME>`
-- `ELOWEN_NATS_URL=nats://127.0.0.1:4222`
-- `ELOWEN_ALLOWED_REPO_ROOTS=<parent directory or directories that contain local git repos>`
-- `ELOWEN_REPO_SCAN_EXCLUDE_PATHS=<optional nested paths under those roots to skip>`
-- `ELOWEN_HIDDEN_REPOS=<optional repo names to keep out of dispatch pickers>`
-- `ELOWEN_EDGE_WORKSPACE_ROOT=<local workspace path>`
-- `ELOWEN_EDGE_WORKTREE_ROOT=<local workspace path>\.elowen\worktrees`
-- `ELOWEN_SANDBOX_MODE=workspace`
+- `[orchestrator].api_url = "https://<PUBLIC_HOSTNAME>"`
+- `[orchestrator].nats_url = "nats://127.0.0.1:4222"`
+- `[device].id = "<stable unique device identifier>"`
+- `[device].name = "<operator-visible label>"`
+- `[repositories].allowed_roots = ["<parent directory containing git repos>"]`
+- `[repositories].excluded_paths = ["<optional nested paths to skip>"]`
+- `[repositories].hidden_repos = ["<optional repo names hidden from dispatch pickers>"]`
+- `[repositories].workspace_root = "<workspace path>"`
+- `[repositories].worktree_root = "<workspace path>/.elowen/worktrees"`
+- `[runner].codex_command = "codex"`
+- `[runner].codex_args = ["--model", "gpt-5.4"]`
+- `[runner].sandbox_mode = "workspace"`
+- `[trust].orchestrator_keys_path = "secrets/orchestrator-trust.json"`
+- `[trust].edge_signing_key_path = "secrets/edge-signing-key.txt"`
 
-`ELOWEN_ALLOWED_REPO_ROOTS` is the preferred repository declaration. The edge discovers nested git repositories under those trusted roots and advertises them during device registration. Use `ELOWEN_REPO_SCAN_EXCLUDE_PATHS` when a trusted parent contains subtrees that should never be scanned, and `ELOWEN_HIDDEN_REPOS` when a discovered repository should stay out of the orchestrator's selection UX. Keep `ELOWEN_ALLOWED_REPOS` only as an optional explicit overlay when you need a manual supplement or exception.
-
-For trusted enrollment, also keep these values per device:
-
-- `ELOWEN_DEVICE_ID=<stable unique device identifier for this machine only>`
-- `ELOWEN_DEVICE_NAME=<operator-visible label for this machine only>`
-- `ELOWEN_ORCHESTRATOR_PUBLIC_KEY=<current orchestrator signer or Slice 34 trust bundle delivered by the rollout plan>`
-- `ELOWEN_EDGE_SIGNING_KEY=<this machine's private signing key>`
-
-Treat `ELOWEN_DEVICE_ID` and `ELOWEN_EDGE_SIGNING_KEY` as device identity material. Do not reuse either value on a second machine.
-
-To enable the real Codex runner, also set:
-
-- `ELOWEN_CODEX_COMMAND=codex`
-
-Optional extra flags belong in `ELOWEN_CODEX_ARGS_JSON`. Example:
-
-```json
-["--model","gpt-5.4"]
-```
-
-Do not include `exec`, `-C`, `--cd`, `-o`, or `--output-last-message`. `elowen-edge` manages those parts of the Codex invocation itself.
-
-The edge runtime now enforces a worktree sandbox by default. Validation commands must stay inside the job worktree and cannot be launched through shell interpreters such as `powershell`, `cmd`, `sh`, or `bash`. Use `ELOWEN_SANDBOX_MODE=off` only for deliberate local debugging.
-
-## Trust lifecycle operator rules
-
-Follow these rules whenever you change trust material on a laptop edge:
-
-- Keep one env file per device. Name it after the device and do not share it between laptops.
-- Keep a separate operator note with the device ID, machine owner, current edge-key fingerprint, and last successful trusted registration time.
-- Do not delete the device from the API to force re-enrollment. Use the explicit Slice 34 rotation or revocation path from the orchestrator side.
-- Never copy another edge's private signing key onto this machine, even for testing.
-- Before any trust change, make sure the machine is not actively running a job.
-
-## Run in the foreground
-
-This starts the SSH tunnel and keeps the edge attached to the current terminal:
+On Windows, configure Codex with the command that works from a non-interactive background task. Prefer the npm shim discovered with:
 
 ```powershell
-.\elowen-edge\scripts\windows\Start-ElowenEdge.ps1 `
-  -EnvFile .\elowen-edge\edge.env.local `
-  -TunnelUser <vps-user> `
-  -TunnelHost <PUBLIC_HOSTNAME> `
+Get-Command codex.cmd
+```
+
+Use that absolute path in TOML:
+
+```toml
+[runner]
+codex_command = 'C:\Users\<you>\AppData\Roaming\npm\codex.cmd'
+codex_args = []
+```
+
+Avoid pointing at the Microsoft Store app location under `C:\Program Files\WindowsApps`; it may be visible but fail with `Access is denied` when the edge service starts.
+
+`[repositories].allowed_roots` is the preferred repository declaration. The edge discovers nested git repositories under those trusted roots and advertises them during device registration. Keep `[repositories].allowed_repos` only as an explicit overlay for one-off additions or exceptions.
+
+## Migrate From A Legacy Env File
+
+If a host still has `edge.env.local`, import it once:
+
+```powershell
+.\elowen-edge\target\release\elowen-edge.exe config import-env `
+  --env-file .\elowen-edge\edge.env.local `
+  --config .\elowen-edge\edge.toml
+```
+
+After import, run only with `run --config`. The runtime no longer accepts `--env-file` or `ELOWEN_EDGE_ENV_FILE`.
+
+## Run In The Foreground
+
+```powershell
+.\elowen-edge\target\release\elowen-edge.exe run --config .\elowen-edge\edge.toml
+```
+
+For Linux:
+
+```bash
+/usr/local/bin/elowen-edge run --config /etc/elowen/edge.toml
+```
+
+## Persistent Service Install
+
+Windows uses Task Scheduler. Open the TUI and press `i` on the Service view to install the task, `s` to start, `x` to stop, and `r` to restart.
+
+Linux and VPS hosts use systemd. When the TUI runs without permission to write `/etc/systemd/system`, it prints the unit content and target path so the operator can install with `sudo`.
+
+Both service models run:
+
+```bash
+elowen-edge run --config <path>
+```
+
+The runtime writes local status to `[runtime].state_dir/status.json`, which the TUI reads for passive health reporting.
+
+Install a Windows shortcut for opening the TUI without affecting the background edge service:
+
+```powershell
+.\elowen-edge\scripts\windows\Install-ElowenEdgeTuiShortcut.ps1 `
+  -ConfigFile .\elowen-edge\edge.toml `
   -Release
 ```
 
-If the NATS tunnel already exists, skip tunnel startup:
+Use `-Location StartMenu` if you prefer a Start Menu shortcut instead of a Desktop shortcut.
 
-```powershell
-.\elowen-edge\scripts\windows\Start-ElowenEdge.ps1 `
-  -EnvFile .\elowen-edge\edge.env.local `
-  -SkipTunnel `
-  -Release
-```
+## Validation Checklist
 
-## Run detached
+1. Open the TUI and confirm the config parses.
+2. Confirm secret-file diagnostics pass.
+3. Confirm Codex preflight passes, or intentionally accept simulated-runner mode for a test edge.
+4. Install and start the service through the TUI.
+5. Confirm the device appears in the remote UI or `GET /api/v1/devices`.
+6. Create a manual capability job and confirm completion.
+7. If repositories are configured, create a repository job and confirm worktree creation plus validation.
+8. Restart the service and confirm the edge returns without an interactive terminal.
 
-This leaves both the tunnel and edge running in the background:
+## Trust Lifecycle Rules
 
-```powershell
-.\elowen-edge\scripts\windows\Start-ElowenEdge.ps1 `
-  -EnvFile .\elowen-edge\edge.env.local `
-  -TunnelUser <vps-user> `
-  -TunnelHost <PUBLIC_HOSTNAME> `
-  -Release `
-  -Detach
-```
+- Keep one TOML config and one secret directory per device.
+- Do not reuse a device id or private edge signing key on another machine.
+- During edge key rotation, keep the same `[device].id`, set `[trust].previous_edge_signing_key_path` only for the re-enrollment window, and remove it after the API confirms the new key.
+- During orchestrator signer rotation, update `orchestrator-trust.json` with the approved overlap set before the API signer changes.
+- If a device is revoked, stop the edge and do not keep retrying registration blindly.
 
-## Install the preferred Scheduled Task host model
+## Operational Notes
 
-This is the primary recommended production path on Windows. The installer creates a
-scheduled task that starts at system startup, runs with `S4U` logon semantics by default,
-and keeps the tunnel plus edge pair under wrapper supervision:
-
-```powershell
-.\elowen-edge\scripts\windows\Register-ElowenEdgeTask.ps1 `
-  -TaskName ElowenEdge `
-  -EnvFile .\elowen-edge\edge.env.local `
-  -TunnelUser <vps-user> `
-  -TunnelHost <PUBLIC_HOSTNAME> `
-  -Release
-```
-
-Useful optional parameters:
-
-- `-Trigger Startup` keeps the edge off the interactive logon path and is the default.
-- `-LogonType S4U` is the default non-interactive principal model for the current user.
-- `-LogDirectory <path>` stores wrapper-managed tunnel and edge stdout/stderr logs outside the repo if you want a fixed operator log location.
-- `-RequireServiceGrade` fails the install instead of falling back when the host denies the preferred `Startup + S4U` task model.
-
-Use `Start-ScheduledTask -TaskName ElowenEdge` to trigger the task immediately after installation.
-
-If the current host or session denies registration of the preferred `Startup + S4U` task,
-the installer now falls back to a per-user `LogOn + Interactive` scheduled task by default
-and prints the effective mode it installed. Treat that fallback as operationally weaker than
-the primary service-grade path because it still depends on user logon.
-
-## Startup-folder fallback
-
-If Task Scheduler is blocked by local policy or the machine cannot support the preferred
-scheduled-task model, fall back to the Startup-folder launcher:
-
-```powershell
-.\elowen-edge\scripts\windows\Install-ElowenEdgeStartup.ps1 `
-  -StartupName ElowenEdge `
-  -EnvFile .\elowen-edge\edge.env.local `
-  -TunnelUser <vps-user> `
-  -TunnelHost <PUBLIC_HOSTNAME> `
-  -Release
-```
-
-Treat this as a fallback path for constrained hosts rather than the default recommended
-production installation.
-
-## Validation checklist
-
-1. Install the Scheduled Task host model and start it with `Start-ScheduledTask -TaskName ElowenEdge`.
-2. Confirm the device appears in the remote UI or `GET /api/v1/devices`.
-3. Create a manual job from the remote UI.
-4. Confirm the job is dispatched to the laptop and job events return to the orchestrator.
-5. Restart the task or reboot the machine and confirm the edge returns without an interactive logon.
-6. Stop either the tunnel or edge process and confirm the wrapper/task restart path returns the laptop to service.
-7. If the installer fell back to `LogOn + Interactive`, record that result as a host-policy limitation rather than a service-grade pass.
-
-## Slice 34 trust lifecycle procedures
-
-### First trusted enrollment
-
-1. Generate a fresh edge signing keypair for this machine only.
-2. Set `ELOWEN_DEVICE_ID`, `ELOWEN_DEVICE_NAME`, `ELOWEN_ORCHESTRATOR_PUBLIC_KEY`, and `ELOWEN_EDGE_SIGNING_KEY` in the device's env file.
-3. Start the wrapper and wait for trusted registration to complete.
-4. Confirm the device appears in the UI with the expected trust state before sending work to it.
-
-### Additional trusted edge enrollment
-
-1. Start from a new env file rather than copying another laptop's full config.
-2. Choose a new `ELOWEN_DEVICE_ID` and a unique display name for the additional machine.
-3. Generate a new edge signing keypair on that machine.
-4. Use the current orchestrator trust bundle from the rollout plan, including any staged signer needed during an orchestrator rotation window.
-5. Start the scheduled task or wrapper and confirm the UI shows a new device record instead of changing an existing one.
-
-### Edge signing key rotation and re-enrollment
-
-1. Stop the edge after the current job queue is empty.
-2. Generate a fresh edge signing keypair on the same machine.
-3. Keep the existing `ELOWEN_DEVICE_ID` and device name unchanged.
-4. Replace only `ELOWEN_EDGE_SIGNING_KEY` in the env file, then run the supported Slice 34 re-enrollment flow.
-5. Confirm the API and UI still show the same device identity, with trust state updated to reflect the completed rotation.
-6. Resume normal scheduled startup only after the trust state is correct.
-
-Rollback:
-
-- Restore the previous `ELOWEN_EDGE_SIGNING_KEY` for the same `ELOWEN_DEVICE_ID`.
-- Re-run trusted registration.
-- Do not create a second device identity to work around a failed rotation.
-
-### Orchestrator signer rotation on the edge
-
-1. Receive the updated orchestrator trust bundle before the VPS signer changes.
-2. Update `ELOWEN_ORCHESTRATOR_PUBLIC_KEY` or the device's equivalent trust-bundle setting with the approved overlap set.
-3. Restart the scheduled task or wrapper if required by the runtime packaging on that machine.
-4. Request a fresh trusted registration challenge and confirm the edge accepts only the staged signer set.
-5. After the platform rollout finishes, remove the retired signer from the local trust bundle.
-
-### Revocation response on the edge
-
-1. If the platform revokes this device's trust, stop the edge and do not keep retrying registration blindly.
-2. Confirm with the operator whether the machine is being retired, re-imaged, or recovered with a new signing key.
-3. If the machine is being recovered, wait for the orchestrator-side revocation to be visible, then generate a new edge signing keypair and follow the explicit re-enrollment procedure.
-4. If the machine is retired, archive the local env file securely and remove any copied trust material from the host.
-
-## Operational notes
-
-- The wrapper assumes NATS remains private on the VPS and is reached through SSH local port forwarding.
-- `edge.env.local` should stay out of git.
-- The Windows install helpers are Windows-specific because this is the current laptop host environment. The env-file support in `elowen-edge` itself is cross-platform.
-- Task Scheduler may still be blocked by local policy on some machines. In that case, use the Startup-folder launcher as a fallback rather than the primary recommendation.
-- Trust rotation work is safest when done during a planned maintenance window because a mistrusted edge will stop registering until the trust mismatch is corrected.
+- Keep `edge.toml` and `secrets/` out of git.
+- A present `codex` command can still fail from a background service account; use TUI diagnostics to confirm the service user can run it.
+- Trust rotation work is safest during a planned maintenance window because a mistrusted edge will stop registering until the mismatch is corrected.

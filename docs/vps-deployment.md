@@ -273,42 +273,53 @@ Keep NATS private and forward it to the laptop over SSH:
 ssh -N -L 4222:127.0.0.1:4222 <user>@<PUBLIC_HOSTNAME>
 ```
 
-Then run `elowen-edge` on the laptop with remote API and tunneled NATS:
+Then configure `elowen-edge` on the laptop with remote API and tunneled NATS:
 
-```bash
-$env:ELOWEN_API_URL="https://<PUBLIC_HOSTNAME>"
-$env:ELOWEN_NATS_URL="nats://127.0.0.1:4222"
-$env:ELOWEN_DEVICE_ID="elowen-laptop"
-$env:ELOWEN_DEVICE_NAME="Elowen Laptop"
-$env:ELOWEN_DEVICE_PRIMARY="true"
-$env:ELOWEN_ALLOWED_REPO_ROOTS="D:\Projects"
-# Optional nested paths under the trusted roots that should never be scanned.
-$env:ELOWEN_REPO_SCAN_EXCLUDE_PATHS="D:\Projects\archive"
-# Optional repo names to keep out of the orchestrator repository picker.
-$env:ELOWEN_HIDDEN_REPOS="personal-scratch"
-# Optional explicit repo-name overlay for exceptions or supplements.
-$env:ELOWEN_ALLOWED_REPOS="elowen-api"
-$env:ELOWEN_DEVICE_CAPABILITIES="codex,git,build,test"
-$env:ELOWEN_EDGE_WORKSPACE_ROOT="D:\Projects\elowen"
-$env:ELOWEN_EDGE_WORKTREE_ROOT="D:\Projects\elowen\.elowen\worktrees"
-# Optional Slice 28 trusted registration. Use the orchestrator public key that
-# matches ELOWEN_ORCHESTRATOR_SIGNING_KEY, plus this edge's private signing key.
-# $env:ELOWEN_ORCHESTRATOR_PUBLIC_KEY="<base64url-no-pad Ed25519 public key>"
-# $env:ELOWEN_EDGE_SIGNING_KEY="<base64url-no-pad Ed25519 private key>"
-elowen-edge
+```toml
+[orchestrator]
+api_url = "https://<PUBLIC_HOSTNAME>"
+nats_url = "nats://127.0.0.1:4222"
+
+[device]
+id = "elowen-laptop"
+name = "Elowen Laptop"
+primary = true
+capabilities = ["codex", "git", "build", "test", "generic_jobs"]
+
+[repositories]
+workspace_root = "D:\\Projects\\elowen"
+worktree_root = "D:\\Projects\\elowen\\.elowen\\worktrees"
+allowed_roots = ["D:\\Projects"]
+excluded_paths = ["D:\\Projects\\archive"]
+hidden_repos = ["personal-scratch"]
+allowed_repos = ["elowen-api"]
+
+[runner]
+codex_command = "codex"
+sandbox_mode = "workspace"
+
+[trust]
+orchestrator_keys_path = "secrets\\orchestrator-trust.json"
+edge_signing_key_path = "secrets\\edge-signing-key.txt"
 ```
 
-`ELOWEN_ALLOWED_REPO_ROOTS` is the preferred way to expose repositories to the orchestrator. The edge discovers nested git repositories under those parent directories during registration, while `ELOWEN_REPO_SCAN_EXCLUDE_PATHS` and `ELOWEN_HIDDEN_REPOS` let each device trim that set before it reaches the UI selection flow. `ELOWEN_ALLOWED_REPOS` remains available as an explicit overlay for one-off additions or exceptions.
+Run the edge with:
+
+```bash
+elowen-edge run --config /path/to/edge.toml
+```
+
+`[repositories].allowed_roots` is the preferred way to expose repositories to the orchestrator. The edge discovers nested git repositories under those parent directories during registration, while `[repositories].excluded_paths` and `[repositories].hidden_repos` let each device trim that set before it reaches the UI selection flow. `[repositories].allowed_repos` remains available as an explicit overlay for one-off additions or exceptions.
 
 Trusted edge registration is opt-in for rollout safety. When enabled on the API, an edge must first fetch an orchestrator-signed registration challenge, verify it against the pinned orchestrator public key, and attach an edge-signed proof to registration.
 
 Generate compatible keypairs from a trusted workstation with:
 
 ```bash
-elowen-edge --generate-trust-keypair
+elowen-edge trust generate-keypair
 ```
 
-Use one generated private key as `ELOWEN_ORCHESTRATOR_SIGNING_KEY` on the VPS, and give the matching public key to edges as `ELOWEN_ORCHESTRATOR_PUBLIC_KEY`. Generate a separate keypair per edge device, put its private key in `ELOWEN_EDGE_SIGNING_KEY`, and let the API store the public key during trusted registration.
+Use one generated private key as `ELOWEN_ORCHESTRATOR_SIGNING_KEY` on the VPS, and give the matching public key to edges in `secrets/orchestrator-trust.json`. Generate a separate keypair per edge device, put its private key in the file referenced by `[trust].edge_signing_key_path`, and let the API store the public key during trusted registration.
 
 ## Trust inventory
 
@@ -356,7 +367,7 @@ Use this sequence when a single device needs a new signing key:
 1. Drain or pause new work on the target device so rotation does not start mid-job.
 2. Record the device's current `device_id`, display name, and current edge-key fingerprint from the trust inventory.
 3. Generate a fresh edge trust keypair on that device. Never copy another device's signing key and never reuse the old private key on a second machine.
-4. Keep the same `ELOWEN_DEVICE_ID` and device name, replace only the edge signing key in the local env file, and start the explicit Slice 34 trusted re-enrollment flow. Do not delete the existing device row or manually edit API trust tables.
+4. Keep the same `[device].id` and device name, replace only the secret file referenced by `[trust].edge_signing_key_path`, temporarily set `[trust].previous_edge_signing_key_path`, and start the explicit Slice 34 trusted re-enrollment flow. Do not delete the existing device row or manually edit API trust tables.
 5. Confirm the API records the replacement as a rotation or re-enrollment for the same device identity instead of a new anonymous device.
 6. Verify the UI shows the updated trust state and the new edge-key fingerprint, then remove the retired fingerprint from the active inventory and mark it as superseded.
 
@@ -368,7 +379,7 @@ Rollback:
 
 Validation:
 
-- The rotated device re-registers successfully with its original `device_id`.
+- The rotated device re-registers successfully with its original `[device].id`.
 - Manual dispatch to that device still works after re-enrollment.
 - The old edge key can no longer be used as the active key after the new key is accepted.
 
@@ -392,8 +403,8 @@ Validation:
 
 Use this sequence for second and third devices:
 
-1. Assign a unique `ELOWEN_DEVICE_ID`, human-readable device name, and dedicated edge signing keypair to the new machine before first startup.
-2. Create a separate env file per device. Never clone an existing machine's `ELOWEN_EDGE_SIGNING_KEY`.
+1. Assign a unique `[device].id`, human-readable device name, and dedicated edge signing keypair to the new machine before first startup.
+2. Create a separate TOML config and secret directory per device. Never clone an existing machine's edge private key.
 3. Populate the orchestrator trust bundle used for the current rollout window, including any staged signer needed for an active orchestrator rotation.
 4. Start the edge and complete first-time trusted enrollment for that specific device.
 5. Verify the UI shows a distinct device record, the correct repository inventory, and the expected trust state for the new edge.
