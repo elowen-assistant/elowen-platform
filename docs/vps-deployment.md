@@ -54,7 +54,7 @@ This document does not cover:
 6. Keep `ELOWEN_UI_COOKIE_SECURE=true` for the HTTPS VPS deployment so session cookies are marked `Secure`.
 7. Leave `ELOWEN_UI_PASSWORD` empty when using the account config. It remains available only as a legacy compatibility fallback that synthesizes one admin account.
 8. If you intentionally use the legacy fallback instead of the account config, set `ELOWEN_UI_PASSWORD` and optionally `ELOWEN_UI_OPERATOR_LABEL`.
-9. Set `ELOWEN_ORCHESTRATOR_SIGNING_KEY` and `ELOWEN_REQUIRE_TRUSTED_EDGE_REGISTRATION=true` when you want trusted edge registration enforced. Keep a separate operator-owned trust inventory that records the current orchestrator signer fingerprint, every enrolled device ID, the current edge key fingerprint for that device, and any revocation or rotation notes.
+9. Mount the orchestrator signer private key as a secret file, set `ELOWEN_ORCHESTRATOR_SIGNING_KEY_FILE=/run/elowen-env/orchestrator-signing-key.txt`, and set `ELOWEN_REQUIRE_TRUSTED_EDGE_REGISTRATION=true` when you want trusted edge registration enforced. `ELOWEN_ORCHESTRATOR_SIGNING_KEY` remains available as a compatibility fallback, but should not be the normal VPS posture. Keep a separate operator-owned trust inventory that records the current orchestrator signer fingerprint, every enrolled device ID, the current edge key fingerprint for that device, and any revocation or rotation notes.
 10. Set `ELOWEN_API_TAG`, `ELOWEN_NOTES_TAG`, and `ELOWEN_UI_TAG` to the image tags you want to deploy.
 11. Keep the env file and any auth-config file out of git.
 
@@ -319,7 +319,16 @@ Generate compatible keypairs from a trusted workstation with:
 elowen-edge trust generate-keypair
 ```
 
-Use one generated private key as `ELOWEN_ORCHESTRATOR_SIGNING_KEY` on the VPS, and give the matching public key to edges in `secrets/orchestrator-trust.json`. Generate a separate keypair per edge device, put its private key in the file referenced by `[trust].edge_signing_key_path`, and let the API store the public key during trusted registration.
+Use one generated private key as the mounted file referenced by `ELOWEN_ORCHESTRATOR_SIGNING_KEY_FILE` on the VPS, and give the matching public key to edges in `secrets/orchestrator-trust.json`. Generate a separate keypair per edge device, put its private key in the provider referenced by `[trust.edge_signing_key]`, and let the API store the public key during trusted registration.
+
+For Docker Compose, keep private signer material outside the repository and mount it read-only through `../env` or a host secret directory:
+
+```env
+ELOWEN_ORCHESTRATOR_SIGNING_KEY_FILE=/run/elowen-env/orchestrator-signing-key.txt
+ELOWEN_ORCHESTRATOR_SIGNING_KEYS=
+```
+
+Only the public trust bundle distributed to edges may be world-readable. Private signer files and edge signing-key files must be readable only by the service account or injected as container/Kubernetes secrets.
 
 ## Trust inventory
 
@@ -345,10 +354,10 @@ devices may receive jobs, while `rotated`, `revoked`, `untrusted`, and
 
 ### Orchestrator signing key rotation
 
-Use this sequence when replacing `ELOWEN_ORCHESTRATOR_SIGNING_KEY` without breaking trusted enrollment:
+Use this sequence when replacing the mounted orchestrator signer without breaking trusted enrollment:
 
 1. Generate a new Ed25519 keypair from a trusted workstation and record both old and new public-key fingerprints in the trust inventory.
-2. Add the new private key to `ELOWEN_ORCHESTRATOR_SIGNING_KEYS`, deploy `elowen-api`, and mark the new public signer `staged` in the admin UI.
+2. Add the new private key to a second mounted secret file, set `ELOWEN_ORCHESTRATOR_SIGNING_KEY_FILES` to include both signer files, deploy `elowen-api`, and mark the new public signer `staged` in the admin UI.
 3. Distribute the new orchestrator public key to every enrolled edge before activation. During the overlap window, each edge should trust both the current signer and the staged next signer from the rollout bundle.
 4. From one canary edge, request a trusted registration challenge and confirm it accepts the new signer without treating any unknown signer as valid.
 5. Repeat the challenge and registration check from at least one still-unrotated edge and one already-updated edge. Do not remove the old signer until both classes succeed.

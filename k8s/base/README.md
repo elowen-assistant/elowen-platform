@@ -28,7 +28,7 @@ Deployment-input expectations:
 - For API auth, choose one of these two modes:
   - legacy fallback: set `ELOWEN_UI_PASSWORD` in the main secret and leave `ELOWEN_UI_AUTH_CONFIG_PATH` empty
   - account config: create a secret named `elowen-ui-auth-config` with a `ui-auth.toml` key, mount it at `/run/elowen-env/ui-auth.toml`, and set `ELOWEN_UI_AUTH_CONFIG_PATH=/run/elowen-env/ui-auth.toml`
-- Trusted registration inputs remain optional until the Kubernetes validation path explicitly decides to enforce them.
+- Trusted registration inputs remain optional until the Kubernetes validation path explicitly decides to enforce them. For hardened signer storage, create `elowen-orchestrator-signer` with an `orchestrator-signing-key` entry mounted at `/run/elowen-secrets/orchestrator-signing-key`, then set `ELOWEN_ORCHESTRATOR_SIGNING_KEY_FILE` to that path through the deployment env or an environment-specific overlay.
 - If you need `elowen-edge` experimentation in Kubernetes anyway, treat it as unsupported exploratory work rather than part of the validated Slice 39 base.
 
 Apply with:

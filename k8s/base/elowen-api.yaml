@@ -66,6 +66,9 @@ spec:
             - name: ui-auth-config
               mountPath: /run/elowen-env
               readOnly: true
+            - name: orchestrator-signer
+              mountPath: /run/elowen-secrets
+              readOnly: true
           readinessProbe:
             httpGet:
               path: /health
@@ -76,4 +79,8 @@ spec:
         - name: ui-auth-config
           secret:
             secretName: elowen-ui-auth-config
+            optional: true
+        - name: orchestrator-signer
+          secret:
+            secretName: elowen-orchestrator-signer
             optional: true

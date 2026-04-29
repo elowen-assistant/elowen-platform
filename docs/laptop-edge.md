@@ -1,6 +1,6 @@
 # Edge Client Runtime
 
-This runbook describes the Slice 41 operator path for running `elowen-edge` as a durable Windows or Linux edge runtime with TOML configuration, separate secret files, a local TUI, and service-manager integration.
+This runbook describes the operator path for running `elowen-edge` as a durable Windows or Linux edge runtime with TOML configuration, provider-backed secret storage, a local TUI, and service-manager integration.
 
 ## Scope
 
@@ -8,7 +8,7 @@ This document covers:
 
 - preparing a Windows laptop or Linux/VPS host to run `elowen-edge`
 - migrating one legacy env file into TOML
-- storing private edge trust material in permission-checked local secret files
+- storing private edge trust material in Windows DPAPI-protected files or permission-checked Linux/container secret files
 - using the TUI for setup, diagnostics, and service control
 - installing persistent service startup through Windows Task Scheduler or Linux systemd
 - validating device registration and remote dispatch
@@ -37,7 +37,16 @@ Generate per-device trust material:
 .\elowen-edge\target\release\elowen-edge.exe trust generate-keypair
 ```
 
-Store the edge private key in `secrets\edge-signing-key.txt`. Store the orchestrator trust bundle in `secrets\orchestrator-trust.json`:
+On Windows, import the generated edge private key into a DPAPI-protected local file:
+
+```powershell
+.\elowen-edge\target\release\elowen-edge.exe trust import-key `
+  --from .\elowen-edge\secrets\edge-signing-key.txt `
+  --to .\elowen-edge\secrets\edge-signing-key.dpapi `
+  --provider dpapi
+```
+
+Store the orchestrator public trust bundle in `secrets\orchestrator-trust.json`:
 
 ```json
 [
@@ -45,7 +54,7 @@ Store the edge private key in `secrets\edge-signing-key.txt`. Store the orchestr
 ]
 ```
 
-On Linux, restrict the secret files to the service user before startup:
+On Linux, keep the edge private key in a mounted or service-owned file and restrict it to the service user before startup:
 
 ```bash
 chmod 600 /etc/elowen/secrets/*
@@ -112,7 +121,8 @@ Expected baseline values:
 - `[runner].codex_args = ["--model", "gpt-5.4"]`
 - `[runner].sandbox_mode = "workspace"`
 - `[trust].orchestrator_keys_path = "secrets/orchestrator-trust.json"`
-- `[trust].edge_signing_key_path = "secrets/edge-signing-key.txt"`
+- `[trust.edge_signing_key].provider = "dpapi"` and `[trust.edge_signing_key].path = "secrets/edge-signing-key.dpapi"` on Windows
+- `[trust.edge_signing_key].provider = "file"` and `[trust.edge_signing_key].path = "secrets/edge-signing-key.txt"` on Linux/VPS/container hosts
 
 On Windows, configure Codex with the command that works from a non-interactive background task. Prefer the npm shim discovered with:
 
@@ -183,7 +193,7 @@ Use `-Location StartMenu` if you prefer a Start Menu shortcut instead of a Deskt
 ## Validation Checklist
 
 1. Open the TUI and confirm the config parses.
-2. Confirm secret-file diagnostics pass.
+2. Confirm secret-provider diagnostics pass.
 3. Confirm Codex preflight passes, or intentionally accept simulated-runner mode for a test edge.
 4. Install and start the service through the TUI.
 5. Confirm the device appears in the remote UI or `GET /api/v1/devices`.
@@ -193,15 +203,15 @@ Use `-Location StartMenu` if you prefer a Start Menu shortcut instead of a Deskt
 
 ## Trust Lifecycle Rules
 
-- Keep one TOML config and one secret directory per device.
+- Keep one TOML config and one secret backend/directory per device.
 - Do not reuse a device id or private edge signing key on another machine.
-- During edge key rotation, keep the same `[device].id`, set `[trust].previous_edge_signing_key_path` only for the re-enrollment window, and remove it after the orchestrator admin UI confirms the rotated key.
+- During edge key rotation, keep the same `[device].id`, set `[trust.previous_edge_signing_key]` only for the re-enrollment window, and remove it after the orchestrator admin UI confirms the rotated key.
 - During orchestrator signer rotation, update `orchestrator-trust.json` with the approved overlap set before the API signer changes.
 - If a device is revoked, stop the edge and do not keep retrying registration blindly.
 - The TUI Diagnostics view reports structured trust failures when the API returns them. A revoked device/key means the orchestrator admin must clear revocation or re-enroll fresh material; a retired or unknown signer means the local `orchestrator-trust.json` is stale; a previous-key mismatch means the rotation window needs the prior edge key path restored.
 
 ## Operational Notes
 
-- Keep `edge.toml` and `secrets/` out of git.
+- Keep `edge.toml` and `secrets/` out of git. DPAPI files are encrypted for the local Windows account but should still be treated as private operational material.
 - A present `codex` command can still fail from a background service account; use TUI diagnostics to confirm the service user can run it.
 - Trust rotation work is safest during a planned maintenance window because a mistrusted edge will stop registering until the mismatch is corrected.
